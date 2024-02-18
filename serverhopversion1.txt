@@ -1,0 +1,112 @@
+--|| Auto Serverhop Version 1.00 || --
+
+local PlaceId = game.PlaceId or 15532962292 -- Sols RNG RELEASE
+
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local queueteleport = queue_on_teleport
+
+local SavedJobIds = {}
+local CurrentHour = os.date("!*t").hour
+local ServerChecked
+
+local function GrabSavedJobIds()
+    local Success, Error = pcall(function()
+        SavedJobIds = HttpService:JSONDecode(readfile("NotSameServers.json"))
+    end)
+    
+    if Error then
+        table.insert(SavedJobIds, CurrentHour)
+        writefile("NotSameServers.json", HttpService:JSONEncode(SavedJobIds))
+    end
+end
+
+function TpReturner()
+    local Site = 'https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'
+
+    if ServerChecked then
+        Site = Site .. '&cursor=' .. ServerChecked
+    end
+
+    local response = HttpService:JSONDecode(game:HttpGet(Site))
+    if response.nextPageCursor and response.nextPageCursor ~= "null" and response.nextPageCursor ~= nil then
+        ServerChecked = response.nextPageCursor
+    end
+
+
+    for _, server in ipairs(response.data) do
+        if tonumber(server.maxPlayers) > tonumber(server.playing) then
+            local isUnique = true
+            for _, id in ipairs(SavedJobIds) do
+                if id == server.id then
+                    isUnique = false
+                    break
+                end
+            end
+            if isUnique then
+                table.insert(AllIDs, server.id)
+                writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+                TeleportService:TeleportToPlaceInstance(PlaceID, server.id, Player)
+                task.wait(5)
+            end
+        end
+    end
+end
+
+function Teleport()
+    while task.wait(.1) do
+        pcall(function()
+            TPReturner()
+        end)
+    end
+end
+
+
+local function TpBypass()
+	firetouchinterest(workspace.safenet, Player.Character:FindFirstChild("HumanoidRootPart"),0)
+	firetouchinterest(workspace.safenet, Player.Character:FindFirstChild("HumanoidRootPart"),1)
+end
+
+local function GrabItem(Item)
+    TpBypass()
+    task.wait(.5)
+
+    local ItemFixedCFrame = Item:IsA("Model") and Item.WorldPivot or Item.CFrame
+
+	for i = 1, 10 do 
+		task.wait()
+        Player.Character.HumanoidRootPart.CFrame = ItemFixedCFrame
+	end
+
+	task.wait(.1)
+
+	local DistanceCheck = (Player.Character.HumanoidRootPart.Position - ItemFixedCFrame.Position).magnitude
+
+	if DistanceCheck < 10 then
+		for i,v in pairs(Item:GetDescendants()) do
+			if v:IsA("ProximityPrompt") then
+				fireproximityprompt(v)
+			end
+		end
+	end
+
+	task.wait(.1)
+end
+
+local function GrabItems()
+    for i,v in pairs(workspace.DroppedItems:GetChildren()) do
+        GrabItem(v)
+    end
+end
+
+Player.OnTeleport:Connect(function(State)
+	if queueteleport then
+		queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()")
+	end
+end)
+
+GrabSavedJobIds()
+GrabItems()
+Teleport()
