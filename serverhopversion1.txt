@@ -1,9 +1,11 @@
 --|| Auto Serverhop Version 1.00 || --
+repeat task.wait() until game:IsLoaded()
 
 local PlaceId = game.PlaceId or 15532962292 -- Sols RNG RELEASE
 
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local queueteleport = queue_on_teleport
@@ -107,6 +109,9 @@ Player.OnTeleport:Connect(function(State)
 	end
 end)
 
+ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("PlayBegin"):FireServer()
+
+task.wait(.5)
 
 GrabItems()
 Teleport()
