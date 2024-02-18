@@ -75,7 +75,7 @@ local function GrabItem(Item)
     TpBypass()
     task.wait(.5)
 
-    local ItemFixedCFrame = Item:IsA("Model") and Item.WorldPivot or Item.CFrame
+    local ItemFixedCFrame = Item:IsA("Model") and Item.Liquid.CFrame or Item.CFrame
 
 	for i = 1, 10 do 
 		task.wait()
@@ -109,9 +109,10 @@ Player.OnTeleport:Connect(function(State)
 	end
 end)
 
+repeat task.wait() until Player.PlayerGui.BeforePlaying.LoadingFrame.Start.Visible
 ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("PlayBegin"):FireServer()
 
-task.wait(.5)
+task.wait(1.5)
 
 GrabItems()
 Teleport()
