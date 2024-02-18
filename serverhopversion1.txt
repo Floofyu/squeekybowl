@@ -12,19 +12,19 @@ local SavedJobIds = {}
 local CurrentHour = os.date("!*t").hour
 local ServerChecked
 
-local function GrabSavedJobIds()
-    local Success, Error = pcall(function()
-        SavedJobIds = HttpService:JSONDecode(readfile("NotSameServers.json"))
-    end)
-    
-    if Error then
-        table.insert(SavedJobIds, CurrentHour)
-        writefile("NotSameServers.json", HttpService:JSONEncode(SavedJobIds))
-    end
+local Success, Error = pcall(function()
+    SavedJobIds = HttpService:JSONDecode(readfile("NotSameServers.json"))
+end)
+
+if Error or not SavedJobIds then
+    SavedJobIds = {}
+    table.insert(SavedJobIds, CurrentHour)
+    writefile("NotSameServers.json", HttpService:JSONEncode(SavedJobIds))
 end
 
+
 function TpReturner()
-    local Site = 'https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'
+    local Site = 'https://games.roblox.com/v1/games/' .. PlaceId .. '/servers/Public?sortOrder=Asc&limit=100'
 
     if ServerChecked then
         Site = Site .. '&cursor=' .. ServerChecked
@@ -46,9 +46,9 @@ function TpReturner()
                 end
             end
             if isUnique then
-                table.insert(AllIDs, server.id)
+                table.insert(SavedJobIds, server.id)
                 writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
-                TeleportService:TeleportToPlaceInstance(PlaceID, server.id, Player)
+                TeleportService:TeleportToPlaceInstance(PlaceId, server.id, Player)
                 task.wait(5)
             end
         end
@@ -56,9 +56,9 @@ function TpReturner()
 end
 
 function Teleport()
-    while task.wait(.1) do
+    while task.wait() do
         pcall(function()
-            TPReturner()
+            TpReturner()    
         end)
     end
 end
@@ -103,10 +103,10 @@ end
 
 Player.OnTeleport:Connect(function(State)
 	if queueteleport then
-		queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/Floofyu/squeekybowl/main/serverhopversion1.txt'))()")
+		queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()")
 	end
 end)
 
-GrabSavedJobIds()
+
 GrabItems()
 Teleport()
