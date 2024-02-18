@@ -103,7 +103,7 @@ end
 
 Player.OnTeleport:Connect(function(State)
 	if queueteleport then
-		queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()")
+		queueteleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/Floofyu/squeekybowl/main/serverhopversion1.txt'))()")
 	end
 end)
 
