@@ -75,26 +75,27 @@ local function GrabItem(Item)
     TpBypass()
     task.wait(.5)
 
-    local ItemFixedCFrame = Item:IsA("Model") and Item.Liquid.CFrame or Item.CFrame
+    local ItemFixedCFrame = Item:IsA("Model") and Item.WorldPivot or Item.CFrame
 
 	for i = 1, 10 do 
 		task.wait()
         Player.Character.HumanoidRootPart.CFrame = ItemFixedCFrame
 	end
 
-	task.wait(.1)
+    task.wait(.1)
 
-	local DistanceCheck = (Player.Character.HumanoidRootPart.Position - ItemFixedCFrame.Position).magnitude
-
-	if DistanceCheck < 10 then
+	for i = 1, 5 do 
 		for i,v in pairs(Item:GetDescendants()) do
 			if v:IsA("ProximityPrompt") then
-				fireproximityprompt(v)
+				if (Player.Character.HumanoidRootPart.Position - v.Parent.Position).magnitude < 10 then
+					fireproximityprompt(v)
+				end
 			end
 		end
+		task.wait()
 	end
 
-	task.wait(.1)
+	task.wait(.25)
 end
 
 local function GrabItems()
@@ -111,8 +112,7 @@ end)
 
 repeat task.wait() until Player.PlayerGui.BeforePlaying.LoadingFrame.Start.Visible
 ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("PlayBegin"):FireServer()
-
-task.wait(1.5)
+task.wait(2)
 
 GrabItems()
 Teleport()
