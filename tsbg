@@ -1,0 +1,92 @@
+_G.Active = true
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+
+local DefaultPlayerCFrame = CFrame.new(1073.91443, 402.489014, 22984.873, 1, 0, 0, 0, 1, 0, 0, 0, 1) * CFrame.new(0,3,4)
+local DefaultVictimCFrame = CFrame.new(1073.91443, 402.489014, 22984.873, 1, 0, 0, 0, 1, 0, 0, 0, 1) * CFrame.new(0,3,0)
+
+local function GetAvalibleSkill()
+    for i,v in pairs(Player.PlayerGui.Hotbar.Backpack.Hotbar:GetChildren()) do
+        if v:IsA("TextButton") then
+            if not v.Base:FindFirstChild("Cooldown") then
+                return v.Base.ToolName.Text
+            end
+        end
+    end
+end
+
+while _G.Active do task.wait()
+    local GetSkill = GetAvalibleSkill()
+    local WaitTime = 1
+    print(GetSkill)
+
+    if GetSkill and GetSkill ~= "N/A" then
+        Player.Character.HumanoidRootPart.CFrame = DefaultPlayerCFrame
+        Player.Character.HumanoidRootPart.Anchored = false
+        task.wait(.1)
+        if GetSkill == "Jet Dive" then 
+            Player.Character.HumanoidRootPart.CFrame = DefaultPlayerCFrame * CFrame.new(0,0,44)
+            WaitTime = 2.4
+            
+        elseif GetSkill == "Ignition Burst" then
+            -- turn around
+            Player.Character.HumanoidRootPart.Anchored = true
+            Player.Character.HumanoidRootPart.CFrame = DefaultPlayerCFrame * CFrame.new(0,0,4)
+            WaitTime = 2.2
+        elseif GetSkill == "Blitz Shot" then
+            Player.Character.HumanoidRootPart.CFrame = DefaultPlayerCFrame * CFrame.new(0,0,5)
+            WaitTime = 3.25
+        elseif GetSkill == "Machine Gun Blows" then
+            WaitTime = 3
+            Player.Character.HumanoidRootPart.Anchored = true
+        end
+        task.wait(.1)
+        local args = {
+            [1] = {
+                ["Goal"] = "Console Move",
+                ["Tool"] = Player.Backpack[GetSkill]
+            }
+        }
+        
+        Player.Character.Communicate:FireServer(unpack(args))
+        task.wait(WaitTime)
+    else
+        local args = {
+            [1] = {
+                ["Goal"] = "LeftClick"
+            }
+        }
+        
+        Player.Character.Communicate:FireServer(unpack(args))
+        task.wait(1)
+    end
+end
+
+local VirtualUser = game:GetService("VirtualUser")
+Players.LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+--^ Main
+
+-- alt below
+
+_G.Active = true
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
+
+Players.LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+local DefaultPlayerCFrame = CFrame.new(1073.91443, 402.489014, 22984.873, 1, 0, 0, 0, 1, 0, 0, 0, 1) * CFrame.new(0,3,4)
+local DefaultVictimCFrame = CFrame.new(1073.91443, 402.489014, 22984.873, 1, 0, 0, 0, 1, 0, 0, 0, 1) * CFrame.new(0,3,0)
+
+while _G.Active do task.wait()
+    pcall(function()
+        Player.Character.HumanoidRootPart.CFrame = DefaultVictimCFrame
+    end)
+end
