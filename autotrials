@@ -1,0 +1,222 @@
+shared.Enabled = true -- set to false to stop 
+shared.LockOnRange = 14 --  When to start looking at the npc [+5 if npc starts running]
+shared.M1Range = 12 -- with skills [+4 with no skills avalible]
+shared.Webhook = "https://discord.com/api/webhooks/1129688894829514803/PeQ4vPkcRD-Wp9bpX9sJ4ydCigEmu8GpOsg9VogwyVLndK37bWKq_u8Ce6NfNHP0bCXf"
+
+shared.SkillHotBar = {
+    --"One", Combat Goes At One
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+
+} -- Which number on your hotbar to use [Skills Only]
+
+------------------------------------------
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local VirtualInputManager = game:GetService('VirtualInputManager')
+local Player = Players.LocalPlayer
+
+local TotalWins = 0
+local TotalLosses = 0
+
+local VirtualUser = game:GetService("VirtualUser")
+Player.Idled:connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+end)
+
+local function LookAtNPC()
+    local Npc = workspace.Live:FindFirstChild("NPC")
+    local Root = Player.Character.HumanoidRootPart
+    local Humanoid = Player.Character.Humanoid
+
+    if Npc then
+        local NpcRoot = Npc:FindFirstChild("HumanoidRootPart")
+        local NpcHumanoid = Npc:FindFirstChild("Humanoid")
+        local Distance = (NpcRoot.Position - Root.Position).magnitude
+        local RealLockRange = shared.LockOnRange
+
+        if NpcHumanoid.WalkSpeed > 16 then RealLockRange += 5 end
+
+        if Distance < RealLockRange then
+            Root.CFrame = CFrame.new(Root.Position, Vector3.new(NpcRoot.Position.X, Root.Position.Y, NpcRoot.Position.Z))
+            return Distance
+        end
+    end
+    return false
+end
+
+local function GetCombat()
+    for i,v in pairs(Player.Backpack:GetDescendants()) do
+        if v:FindFirstChild("Style") then
+            return v
+        end
+    end
+    local Tool = Player.Character:FindFirstChildWhichIsA("Tool") 
+    if Tool then
+        if Tool:FindFirstChild("Style") then
+        return Tool
+        end
+    end
+end
+
+local function PressGui(Button)
+    for i,v in pairs(getconnections(Button.MouseButton1Click)) do
+		v.Function()
+	end
+end
+
+local function GetRandomSkill()
+    for i,v in pairs(Player.PlayerGui.BackpackGUI.Frame:GetChildren()) do
+        if table.find(shared.SkillHotBar, v.Name) then
+            if v.ToolName.Text ~= "" and not v.CD.Visible then
+                local Tool = Player.Backpack:FindFirstChild(v.ToolName.Text) or Player.Character:FindFirstChild(v.ToolName.Text)
+                if Tool then
+                    return Tool
+                else
+                    return false
+                end
+            end
+        end
+    end
+end
+
+local function SelectTrial()
+    if Player.PlayerGui.TrialIntroGUI.Frame.Visible then
+        PressGui(Player.PlayerGui.TrialIntroGUI.Frame.Frame2.SelectionF.Second)
+        repeat task.wait(.1) until Player.PlayerGui.TrialIntroGUI.Frame.Frame2.ScrollF:FindFirstChild("200")
+        PressGui(Player.PlayerGui.TrialIntroGUI.Frame.Frame2.ScrollF["200"])
+        repeat task.wait(.1) until Player.PlayerGui.TrialIntroGUI.Frame.Frame2.Continue.Visible
+        PressGui(Player.PlayerGui.TrialIntroGUI.Frame.Frame2.Continue)
+        repeat task.wait(.1) until Player.PlayerGui.TrialIntroGUI.Enter.Visible
+        PressGui(Player.PlayerGui.TrialIntroGUI.Enter)
+    end
+end
+
+local function GetRealMatchResult()
+    for i,v in pairs(Player.PlayerGui:GetChildren()) do
+        if v.Name == "MatchResult" then
+            if v.Frame.Visible then
+                return v
+            end
+        end
+    end
+
+    return nil
+end
+
+local function FireWebhook(Status)
+    local url = shared.Webhook
+    local data = {
+       ["content"] = "Status: " .. Status .. " Wins: " .. TotalWins .. " Losses: " .. TotalLosses,
+    }
+    local newdata = HttpService:JSONEncode(data)
+    
+    local headers = {
+       ["content-type"] = "application/json"
+    }
+    request = http_request or request or HttpPost
+    local abcdef = {Url = url, Body = newdata, Method = "POST", Headers = headers}
+    request(abcdef)
+end
+
+task.spawn(function()
+	local mt = getrawmetatable(game)
+	local backup = mt.__namecall
+	if setreadonly then setreadonly(mt, false) else make_writeable(mt, true) end
+	
+	mt.__namecall = newcclosure(function(...)
+	    local method = getnamecallmethod()
+	    local args = {...}
+	    if method == "FireServer" and tostring(args[1]) == "Detector" then
+	   		print("Exploit Detector Blocked | Method: FireServer")
+	        return nil
+	    elseif method == "InvokeServer" and tostring(args[1]) == "Detector" then
+	   		print("Exploit Detector Blocked | Method: InvokeServer")
+	        return nil
+	    end
+	    return backup(...)
+	end)
+end)
+
+while shared.Enabled do task.wait(.1)
+    local Success, Error = pcall(function()
+        if #Players:GetPlayers() > 1 then Player:Kick("Unknown Player Joined.") return end
+        if Player.PlayerGui:FindFirstChild("TrialIntroGUI") then
+            SelectTrial()
+            task.wait(2)
+        end
+        if Player.PlayerGui:FindFirstChild("FightersGUI") then
+            repeat task.wait(.1) until not Player.PlayerGui:FindFirstChild("FightersGUI")
+        end
+        if Player.PlayerGui:FindFirstChild("TimerGui") then
+            local Combat = GetCombat()
+            local InRange = LookAtNPC()
+            local RandomSkill = GetRandomSkill()
+            local RealRange = shared.M1Range
+    
+            if InRange then
+                if not Player.Character:FindFirstChild("Downed") then
+                    Combat.Parent = Player.Character
+
+                    if not RandomSkill then RealRange += 5 end
+                    
+                    if InRange < RealRange then
+                        Combat:Activate()
+                    end
+
+                    if RandomSkill then
+                        RandomSkill.Parent = Player.Character
+                        RandomSkill:Activate()
+                        task.wait()
+                        RandomSkill.Parent = Player.Backpack
+                    else
+                        Combat.Parent = Player.Backpack
+                        task.wait()
+                        Combat.Parent = Player.Character
+
+                        VirtualInputManager:SendMouseButtonEvent(1,1,1,true,game,0)
+                        VirtualInputManager:SendMouseButtonEvent(1,1,1,false,game,0)
+                    end
+
+                    task.wait(.1)
+                end
+            else
+                local Rhythm = Player.Character:FindFirstChild("Rhythm")
+                if Rhythm and Rhythm.Value < 1 then
+                    Combat.Parent = Player.Character
+                    VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                    VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                end
+            end
+        end
+    
+        local MatchResult = GetRealMatchResult()
+        if MatchResult then
+            task.wait(2)
+            local CheckWin = MatchResult.Win.Value
+            local Status = "Lost"
+    
+            if CheckWin then
+                Status = "Won"
+                TotalWins += 1
+                print("Won" .. TotalWins)
+                PressGui(MatchResult.Frame.ButtonsF.Locker)
+
+                FireWebhook(Status)
+            else
+                TotalLosses += 1
+                print("Lost" .. TotalLosses)
+                PressGui(MatchResult.Frame.ButtonsF.LastCheckpoint)
+
+                FireWebhook(Status)
+            end
+            task.wait(2)
+        end
+    end)
+end
