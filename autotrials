@@ -1,7 +1,10 @@
 shared.Enabled = true -- set to false to stop 
-shared.LockOnRange = 14 --  When to start looking at the npc [+5 if npc starts running]
-shared.M1Range = 12 -- with skills [+4 with no skills avalible]
-shared.Webhook = "https://discord.com/api/webhooks/1129688894829514803/PeQ4vPkcRD-Wp9bpX9sJ4ydCigEmu8GpOsg9VogwyVLndK37bWKq_u8Ce6NfNHP0bCXf"
+shared.LockOnRange = shared.LockOnRange or 18 --  When to start looking at the npc [+5 if npc starts running]
+shared.SkillRange = shared.SkillRange or 15 -- when to start using skills
+shared.M1Range = shared.M1Range or 11 -- with skills [+4 with no skills avalible]
+shared.GlobalSkillCD = shared.GlobalSkillCD or .75 -- waits 2 seconds after the first skill [includes m2]
+shared.Webhook = shared.Webhook or "https://discord.com/api/webhooks/1129688894829514803/PeQ4vPkcRD-Wp9bpX9sJ4ydCigEmu8GpOsg9VogwyVLndK37bWKq_u8Ce6NfNHP0bCXf"
+
 
 shared.SkillHotBar = {
     --"One", Combat Goes At One
@@ -17,11 +20,18 @@ shared.SkillHotBar = {
 ------------------------------------------
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local Debris = game:GetService("Debris")
 local VirtualInputManager = game:GetService('VirtualInputManager')
 local Player = Players.LocalPlayer
 
+local BodyPosition = Instance.new("BodyPosition")
+BodyPosition.Position = Vector3.new(0.27194342, 282.765106, 2.73517132)
+BodyPosition.MaxForce = Vector3.new(50000,5000,50000)
+
 local TotalWins = 0
 local TotalLosses = 0
+local LastSkill = os.clock()
+local NpcIsRunning = false
 
 local VirtualUser = game:GetService("VirtualUser")
 Player.Idled:connect(function()
@@ -40,11 +50,20 @@ local function LookAtNPC()
         local NpcHumanoid = Npc:FindFirstChild("Humanoid")
         local Distance = (NpcRoot.Position - Root.Position).magnitude
         local RealLockRange = shared.LockOnRange
+        local RealSkillRange = shared.SkillRange
 
-        if NpcHumanoid.WalkSpeed > 16 then RealLockRange += 5 end
+        local NpcWalkToPoint = (Root.Position - NpcHumanoid.WalkToPoint).magnitude
 
-        if Distance < RealLockRange then
+        if NpcHumanoid.WalkSpeed > 16 then 
+            NpcIsRunning = true 
+            RealLockRange += 5
+        else
+            NpcIsRunning = false
+        end
+
+        if Distance < RealLockRange or NpcWalkToPoint < 5 then
             Root.CFrame = CFrame.new(Root.Position, Vector3.new(NpcRoot.Position.X, Root.Position.Y, NpcRoot.Position.Z))
+
             return Distance
         end
     end
@@ -144,7 +163,7 @@ task.spawn(function()
 	end)
 end)
 
-while shared.Enabled do task.wait(.1)
+while shared.Enabled do task.wait(.05)
     local Success, Error = pcall(function()
         if #Players:GetPlayers() > 1 then Player:Kick("Unknown Player Joined.") return end
         if Player.PlayerGui:FindFirstChild("TrialIntroGUI") then
@@ -159,45 +178,52 @@ while shared.Enabled do task.wait(.1)
             local InRange = LookAtNPC()
             local RandomSkill = GetRandomSkill()
             local RealRange = shared.M1Range
+            local RealSkillRange = shared.SkillRange
+
+            BodyPosition.Parent = Player.Character.HumanoidRootPart
     
             if InRange then
                 if not Player.Character:FindFirstChild("Downed") then
                     Combat.Parent = Player.Character
 
-                    if not RandomSkill then RealRange += 5 end
-                    
+                    if not RandomSkill or NpcIsRunning then RealRange += 5 RealSkillRange += 4 end
+
                     if InRange < RealRange then
                         Combat:Activate()
                     end
 
-                    if RandomSkill then
+                    if RandomSkill and (os.clock() > LastSkill + shared.GlobalSkillCD) and (InRange < RealSkillRange)  then
+                        Combat.Parent = Player.Backpack
+                        LastSkill = os.clock()
                         RandomSkill.Parent = Player.Character
                         RandomSkill:Activate()
-                        task.wait()
                         RandomSkill.Parent = Player.Backpack
-                    else
-                        Combat.Parent = Player.Backpack
-                        task.wait()
-                        Combat.Parent = Player.Character
-
+                    elseif (os.clock() > LastSkill + shared.GlobalSkillCD) and (InRange < RealSkillRange) then
+                        LastSkill = os.clock()
                         VirtualInputManager:SendMouseButtonEvent(1,1,1,true,game,0)
                         VirtualInputManager:SendMouseButtonEvent(1,1,1,false,game,0)
                     end
 
-                    task.wait(.1)
+                    Combat.Parent = Player.Character
+
+                    task.wait()
                 end
             else
                 local Rhythm = Player.Character:FindFirstChild("Rhythm")
                 if Rhythm and Rhythm.Value < 1 then
-                    Combat.Parent = Player.Character
+                    --Combat.Parent = Player.Character
                     VirtualInputManager:SendKeyEvent(true, "R", false, game)
                     VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                    task.wait(.1)
                 end
             end
         end
     
         local MatchResult = GetRealMatchResult()
         if MatchResult then
+
+           BodyPosition.Parent = nil
+
             task.wait(2)
             local CheckWin = MatchResult.Win.Value
             local Status = "Lost"
