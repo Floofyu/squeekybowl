@@ -1,4 +1,4 @@
-shared.Enabled = true -- set to false to stop 
+shared.Enabled = shared.Enabled or true -- set to false to stop 
 shared.LockOnRange = shared.LockOnRange or 18 --  When to start looking at the npc [+5 if npc starts running]
 shared.SkillRange = shared.SkillRange or 15 -- when to start using skills
 shared.M1Range = shared.M1Range or 11 -- with skills [+4 with no skills avalible]
