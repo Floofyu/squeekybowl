@@ -1,0 +1,319 @@
+
+repeat task.wait() until game:IsLoaded()
+task.wait(2.5)
+
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local TeleportService = game:GetService("TeleportService")
+local Player = Players.LocalPlayer
+local PlaceID = game.PlaceId
+
+if Player.Name ~= shared.PlayerName then return end
+
+local Account = {} Account.__index = Account
+
+local WebserverSettings = {
+    Port = '7963',
+    Password = ''
+}
+
+function WebserverSettings:SetPort(Port) self.Port = Port end
+function WebserverSettings:SetPassword(Password) self.Password = Password end
+
+local HttpService = game:GetService'HttpService'
+local Request = request;
+
+local function GET(Method, Account, ...)
+    local Arguments = {...}
+    local Url = 'http://localhost:' .. WebserverSettings.Port .. '/' .. Method .. '?Account=' .. Account
+
+    for Index, Parameter in pairs(Arguments) do
+        Url = Url .. '&' .. Parameter
+    end
+
+    if WebserverSettings.Password and #WebserverSettings.Password >= 6 then
+        Url = Url .. '&Password=' .. WebserverSettings.Password
+    end
+    
+    local Response = Request {
+        Method = 'GET',
+        Url = Url
+    }
+
+    if Response.StatusCode ~= 200 then return false end
+
+    return Response.Body
+end
+
+local function POST(Method, Account, Body, ...)
+    local Arguments = {...}
+    local Url = 'http://localhost:' .. WebserverSettings.Port .. '/' .. Method .. '?Account=' .. Account
+
+    for Index, Parameter in pairs(Arguments) do
+        Url = '&' .. Url .. Parameter
+    end
+
+    if WebserverSettings.Password and #WebserverSettings.Password >= 6 then
+        Url = Url .. '&Password=' .. WebserverSettings.Password
+    end
+    
+    local Response = Request {
+        Method = 'POST',
+        Url = Url,
+        Body = Body
+    }
+
+    if Response.StatusCode ~= 200 then return false end
+
+    return Response.Body
+end
+
+function Account.new(Username, SkipValidation)
+    local self = {} setmetatable(self, Account)
+
+    local IsValid = SkipValidation or GET('GetCSRFToken', Username)
+
+    if not IsValid or IsValid == 'Invalid Account' then return false end
+
+    self.Username = Username
+
+    return self
+end
+
+function Account:GetCSRFToken() return GET('GetCSRFToken', self.Username) end
+
+function Account:BlockUser(Argument)
+    if typeof(Argument) == 'string' then
+        return GET('BlockUser', self.Username, 'UserId=' .. Argument)
+    elseif typeof(Argument) == 'Instance' and Argument:IsA'Player' then
+        return self:BlockUser(tostring(Argument.UserId))
+    elseif typeof(Argument) == 'number' then
+        return self:BlockUser(tostring(Argument))
+    end
+end
+function Account:UnblockUser(Argument)
+    if typeof(Argument) == 'string' then
+        return GET('UnblockUser', self.Username, 'UserId=' .. Argument)
+    elseif typeof(Argument) == 'Instance' and Argument:IsA'Player' then
+        return self:BlockUser(tostring(Argument.UserId))
+    elseif typeof(Argument) == 'number' then
+        return self:BlockUser(tostring(Argument))
+    end
+end
+function Account:GetBlockedList() return GET('GetBlockedList', self.Username) end
+function Account:UnblockEveryone() return GET('UnblockEveryone', self.Username) end
+
+function Account:GetAlias() return GET('GetAlias', self.Username) end
+function Account:GetDescription() return GET('GetDescription', self.Username) end
+function Account:SetAlias(Alias) return POST('SetAlias', self.Username, Alias) end
+function Account:SetDescription(Description) return POST('SetDescription', self.Username, Description) end
+function Account:AppendDescription(Description) return POST('AppendDescription', self.Username, Description) end
+
+function Account:GetField(Field) return GET('GetField', self.Username, 'Field=' .. HttpService:UrlEncode(Field)) end
+function Account:SetField(Field, Value) return GET('SetField', self.Username, 'Field=' .. HttpService:UrlEncode(Field), 'Value=' .. HttpService:UrlEncode(tostring(Value))) end
+function Account:RemoveField(Field) return GET('RemoveField', self.Username, 'Field=' .. HttpService:UrlEncode(Field)) end
+
+function Account:SetServer(PlaceId, JobId) return GET('SetServer', self.Username, 'PlaceId=' .. PlaceId, 'JobId=' .. JobId) end
+function Account:SetRecommendedServer(PlaceId) return GET('SetServer', self.Username, 'PlaceId=' .. PlaceId) end
+
+function Account:ImportCookie(Token) return GET('ImportCookie', 'Cookie=' .. Token) end
+function Account:GetCookie() return GET('GetCookie', self.Username) end
+function Account:LaunchAccount(PlaceId, JobId, FollowUser, JoinVip) -- if you want to follow someone, PlaceId must be their user id
+    return GET('LaunchAccount', self.Username, 'PlaceId=' .. PlaceId, JobId and ('JobId=' .. JobId), FollowUser and 'FollowUser=true', JoinVip and 'JoinVIP=true')
+end
+
+local BlockUtils = {};
+local IsFriendWith = Player.IsFriendsWith;
+
+local apiAccount;
+
+task.spawn(function()
+    apiAccount = Account.new(Player.Name) --AltManagerAPI.new(LocalPlayer.Name);
+end);
+
+local function isFriendWith(userId)
+    local suc, data = pcall(IsFriendWith, Player, userId);
+
+    if (suc) then
+        return data;
+    end;
+
+    return true;
+end;
+
+function BlockUtils:BlockUser(userId)
+    if(apiAccount) then
+        apiAccount:BlockUser(userId);
+
+        local blockedListRetrieved, blockList = pcall(HttpService.JSONDecode, HttpService, apiAccount:GetBlockedList());
+        if(blockedListRetrieved and typeof(blockList) == 'table' and blockList.success and blockList.total >= 20) then
+            apiAccount:UnblockEveryone();
+        end;
+    else
+        local blockedUserIds = StarterGui:GetCore('GetBlockedUserIds');
+        local playerToBlock = Instance.new('Player');
+        playerToBlock.UserId = tonumber(userId);
+
+        local lastList = #blockedUserIds;
+        GuiService:ClearError();
+
+        repeat
+            StarterGui:SetCore('PromptBlockPlayer', playerToBlock);
+
+            local confirmButton = CoreGui.RobloxGui.PromptDialog.ContainerFrame:FindFirstChild('ConfirmButton');
+            if (not confirmButton) then break end;
+
+            local btnPosition = confirmButton.AbsolutePosition + Vector2.new(40, 40);
+
+            VirtualInputManager:SendMouseButtonEvent(btnPosition.X, btnPosition.Y, 0, false, game, 1);
+            task.wait();
+            VirtualInputManager:SendMouseButtonEvent(btnPosition.X, btnPosition.Y, 0, true, game, 1);
+            task.wait();
+        until #StarterGui:GetCore('GetBlockedUserIds') ~= lastList;
+
+        task.wait(0.2);
+    end;
+end;
+
+function BlockUtils:UnblockUser()
+
+end;
+
+function BlockUtils:BlockRandomUser()
+    for _, v in next, Players:GetPlayers() do
+        if (v ~= Player and not isFriendWith(v.UserId)) then
+            self:BlockUser(v.UserId);
+            break;
+        end;
+    end;
+end;
+
+local function GrabRealEggs()
+    local RealEggs = {}
+    for i,v in pairs(workspace.Event:GetChildren()) do
+        local ClickDetector = v:FindFirstChild("ClickDetector")
+
+        if ClickDetector then
+            table.insert(RealEggs, v)
+        end
+    end
+
+    return RealEggs
+end
+
+local function PlaySound()
+    local NewSound = Instance.new("Sound")
+    NewSound.SoundId = "rbxassetid://1530807190"
+    NewSound.Parent = workspace
+    NewSound.Volume = 10
+    NewSound:Play()
+    task.delay(3, function()
+        NewSound:Destroy()
+    end)
+end
+
+local function FireWebhook()
+    local url = shared.Webhook
+    local data = {
+       ["content"] = "Found Egg",
+    }
+    local newdata = HttpService:JSONEncode(data)
+    
+    local headers = {
+       ["content-type"] = "application/json"
+    }
+    request = http_request or request or HttpPost
+    local abcdef = {Url = url, Body = newdata, Method = "POST", Headers = headers}
+    request(abcdef)
+end
+
+
+task.spawn(function()
+	local mt = getrawmetatable(game)
+	local backup = mt.__namecall
+	if setreadonly then setreadonly(mt, false) else make_writeable(mt, true) end
+	
+	mt.__namecall = newcclosure(function(...)
+	    local method = getnamecallmethod()
+	    local args = {...}
+	    if method == "FireServer" and tostring(args[1]) == "Detector" then
+	   		print("Exploit Detector Blocked | Method: FireServer")
+	        return nil
+	    elseif method == "InvokeServer" and tostring(args[1]) == "Detector" then
+	   		print("Exploit Detector Blocked | Method: InvokeServer")
+	        return nil
+	    end
+	    return backup(...)
+	end)
+end)
+
+
+local Eggs = GrabRealEggs()
+
+if (#Eggs == 0) then print("No Valid Eggs") task.spawn(function() BlockUtils:BlockRandomUser() end) task.wait(2) TeleportService:Teleport(PlaceID) return end
+
+PlaySound()
+print(#Eggs .. " Egg Found")
+for i,v in pairs(Eggs) do
+    local BillboardGui = Instance.new("BillboardGui", v)
+    BillboardGui.Name = "EggTracker"
+    BillboardGui.Size = UDim2.new(10,0, 10,0)
+    BillboardGui.AlwaysOnTop = true
+
+    local Frame = Instance.new("Frame",BillboardGui)
+    Frame.Size = UDim2.new(1,0, 1,0)
+    Frame.BackgroundTransparency = 0.80
+    Frame.BorderSizePixel = 0
+    Frame.BackgroundColor3 = Color3.new(0, 255, 0)
+
+    local Highlight = Instance.new("Highlight")
+    Highlight.Parent = v
+end
+
+local function PressButton(Button)
+    for i,v in pairs(getconnections(Button.MouseButton1Click)) do
+		v.Function()
+	end
+end
+
+workspace.Live.ChildAdded:Connect(function(Character)
+    if Character == Player.Character then
+        for i = 1, 10 do
+            task.wait()
+            Player.Character.HumanoidRootPart.CFrame = Eggs[1].Cube.CFrame
+        end
+
+        task.wait(.5)
+
+        local DistanceFromEgg = (Player.Character.HumanoidRootPart.Position - Eggs[1].Cube.Position).magnitude
+
+        if DistanceFromEgg < 7 then
+
+            FireWebhook()
+
+            for i = 1, 10 do
+                pcall(function()
+                    fireclickdetector(Eggs[1].ClickDetector)
+                end)
+            end
+            
+            task.wait(.25)
+
+            task.spawn(function() BlockUtils:BlockRandomUser() end)
+
+            task.wait(2)
+
+            TeleportService:Teleport(PlaceID)
+        end
+    end
+end)
+
+
+if Player.PlayerGui:FindFirstChild("LoadMenu") then
+repeat task.wait() until Player.PlayerGui.LoadMenu.Loaded
+repeat task.wait(.5) PressButton(Player.PlayerGui.LoadMenu.MainFrame.Play) until not Player.PlayerGui:FindFirstChild("LoadMenu")
+end
