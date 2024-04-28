@@ -61,7 +61,7 @@ local function LookAtNPC()
             NpcIsRunning = false
         end
 
-        if Distance < RealLockRange and NpcWalkToPoint < 5 then
+        if (Distance < RealLockRange and NpcWalkToPoint < 5) or Distance < shared.M1Range - 3 then
             Root.CFrame = CFrame.new(Root.Position, Vector3.new(NpcRoot.Position.X, Root.Position.Y, NpcRoot.Position.Z))
 
             return Distance
