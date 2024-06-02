@@ -1,0 +1,1522 @@
+-- Mobile Version | Made by vib_y uwu
+
+local Material = loadstring(game:HttpGet("https://raw.githubusercontent.com/Floofyu/squeekybowl/main/guithing"))()
+
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService('VirtualInputManager')
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Player = Players.LocalPlayer
+local Mouse = Player:GetMouse()
+
+local AutoCook = false
+local AutoStrikePower = false
+local AutoStrikeSpeed = false
+local SSTiming = 0.95
+local TargetBodyHeat = 30
+local MinStam = 5
+local MaxStam = 65
+local UseM2 = false
+
+local AutoMachines = false
+local MachineType = nil
+local TreadType = nil
+local MachineLevel = nil
+local MachineMaxStam = 100
+local MachineMinStam = 5
+
+local AutoEat = false
+local AutoEatPercentage = 25
+local Eating = false
+local CanEat = true
+
+local SelectedFood = nil
+local CookingDebounce = false
+
+local AutoDura = false
+local DuraTakeTurns = false
+local DuraFirst = nil
+local DuraSecond = nil
+local DuraHitUntil = 15
+
+local Trigger = false
+local Kick = false
+local Ping = true
+local ChargeRhythm = false
+
+local Events = {}
+local Triggers = {}
+
+print("----------------------")
+
+local VirtualUser = game:GetService("VirtualUser")
+Player.Idled:connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+end)
+
+task.spawn(function()
+	local mt = getrawmetatable(game)
+	local backup = mt.__namecall
+	if setreadonly then setreadonly(mt, false) else make_writeable(mt, true) end
+	
+	mt.__namecall = newcclosure(function(...)
+	    local method = getnamecallmethod()
+	    local args = {...}
+	    if method == "FireServer" and tostring(args[1]) == "Detector" then
+	   		print("Exploit Detector Blocked | Method: FireServer")
+	        return nil
+	    elseif method == "InvokeServer" and tostring(args[1]) == "Detector" then
+	   		print("Exploit Detector Blocked | Method: InvokeServer")
+	        return nil
+	    end
+	    return backup(...)
+	end)
+end)
+
+local FoodIngredients = {
+    ["Steak Fried Rice"] = {
+        Rice = 1,
+        Egg = 2,
+        Onion = 1,
+        Carrot = 1,
+        ["Raw Beef"] = 1,
+        Tomato = 1,
+        Spice = 1,
+        Seasoning = 1,
+    },
+
+    ["Sunny side up egg"] = {
+        Egg = 1,
+    },
+
+    ["Steak"] = {
+        Seasoning = 1,
+        ["Raw Beef"] = 1,
+    },
+
+    ["Onigiri"] = {
+        Rice = 2,
+        Seasoning = 1,
+        Seaweed = 1,
+        ["Soy Sauce"] = 1,
+    },
+
+    ["Marinade Lobster"] = {
+        Seasoning = 1,
+        Spice = 1,
+        ["Raw Lobster"] = 1,
+    },
+
+    ["Chicken"] = {
+        ["Raw Chicken"] = 1,
+        Seasoning = 1,
+    },
+
+    ["Curry"] = {
+        Spice = 1,
+        Potato = 1,
+        Carrot = 1,
+        ["Raw Beef"] = 1,
+        Rice = 2,
+        Onion = 1,
+    },
+
+    ["Braised Potatoes"] = {
+        Potato = 2,
+        ["Soy Sauce"] = 1,
+        Onion = 1,
+        Seasoning = 1,
+    },
+
+    ["Grotesque Food"] = {
+        Seaweed = 1, -- Anything
+    },
+}
+
+local function PlaySound()
+    local NewSound = Instance.new("Sound")
+    NewSound.SoundId = "rbxassetid://1530807190"
+    NewSound.Parent = workspace
+    NewSound.Volume = 10
+    NewSound:Play()
+    task.delay(3, function()
+        NewSound:Destroy()
+    end)
+end
+
+PlaySound()
+
+local function format(num, digits)
+	return string.format("%0" .. digits .. "i", num)
+end
+
+function SendWebhook(Message)
+    if not shared.Webhook then return false end
+    if shared.DiscordID then Ping = true else Ping = false end
+
+    local data = {
+        ["content"] = (Ping and'<@'.. shared.DiscordID..'> ' or 'Anon') .. Message,
+    }
+ 
+    request = http_request or request or HttpPost or syn.request
+    local Data = {Url = shared.Webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = {['content-type'] = 'application/json'}}
+    request(Data)
+end
+
+SendWebhook(' TESTING WEBHOOK! :3 You joined at '.. os.date().. " JobId: " .. game.JobId)
+
+local function GetStove(Blacklist)
+    for i,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v.Name == "PanModel" then
+            if v:FindFirstChild("Pan") and v:FindFirstChild("FoodP") and v ~= Blacklist then
+                local DistanceCheck = (Player.Character.HumanoidRootPart.Position - v.Pan.Position).Magnitude
+                if DistanceCheck < 10 then
+                    return v
+                end
+            end
+        end
+    end
+end
+
+local function GetNearPlayers()
+    local PlayersT = {}
+
+    for i,v in pairs(Players:GetChildren()) do
+        if v.Name ~= Player.Name then
+            pcall(function()
+                local Distance = (v.Character.HumanoidRootPart.Position - Player.Character.HumanoidRootPart.Position).magnitude
+    
+                if Distance <= 15 then
+                    table.insert(PlayersT, v)
+                end
+            end)
+        end
+    end
+
+    return PlayersT
+end
+
+local function GetAllPlayerNames()
+    local ListOfNames = {}
+
+    for i,v in pairs(Players:GetChildren()) do
+        table.insert(ListOfNames, v.Name)
+    end
+
+    return ListOfNames
+end
+
+local function CheckAmount(Check, FoodName)
+    local Table = {}
+    local Val = true
+    for i,v in pairs(FoodIngredients[FoodName]) do
+        local Food = Player.Backpack:FindFirstChild(i)
+        if Food then
+            if Food.Quantity.Value < v and Check then
+                return false
+            elseif not Check and Food.Quantity.Value < v then
+                table.insert(Table, i .. " Not Enough Quantity. " .. (tonumber(v) - Food.Quantity.Value))
+            end
+        else
+            if not Check then
+                table.insert(Table, i .. " Ingredient Not Found.")
+            else
+                return false
+            end
+        end
+    end
+    if not Check then
+        return Table
+    else
+        return true
+    end
+end
+
+local function CheckMax(FoodName)
+    local Food = Player.Backpack:FindFirstChild(FoodName) or Player.Character:FindFirstChild(FoodName)
+    if Food then
+        if Food.Quantity.Value < 8 then
+            return true
+        else
+            return false
+        end
+    else
+        return true
+    end
+end
+
+local function LetHimCook(FoodName)
+    CookingDebounce = true
+    local Stove = GetStove()
+    
+    if CheckAmount(true, FoodName) and CheckMax(FoodName) and Stove then
+        --print("Has Ingredients")
+
+        if Stove:FindFirstChild("Cooking") then fireclickdetector(Stove.ClickDetector) end
+        
+        for i,v in pairs(FoodIngredients[FoodName]) do
+            local Food = Player.Backpack:FindFirstChild(i) or Player.Character:FindFirstChild(i)
+            if Food then
+                Food.Parent = Player.Character
+                for i = 1, v do
+                    task.wait(.25)
+                    fireproximityprompt(Stove.Pan.ProxPrompt)
+                end
+                pcall(function()
+                    Food.Parent = Player.Backpack
+                end)
+            end
+        end
+
+        fireclickdetector(Stove.ClickDetector)
+
+        task.wait(0.5)
+
+        local Text = Stove.FoodP.TimeG.TextLabel.Text
+
+        repeat 
+            Text = Stove.FoodP.TimeG.TextLabel.Text
+            task.wait() 
+        until Text == "!!" or not AutoCook
+
+        if Stove:FindFirstChild("Cooking") then fireclickdetector(Stove.ClickDetector) end
+
+        CookingDebounce = false
+    else
+        for i,v in pairs(CheckAmount(false, FoodName)) do
+           print(v)
+        end
+        
+        PlaySound()
+
+        task.wait(3)
+        CookingDebounce = false
+    end
+end
+
+local function GetCombat()
+    for i,v in pairs(Player.Backpack:GetDescendants()) do
+        if v:FindFirstChild("Style") then
+            return v
+        end
+    end
+    local Tool = Player.Character:FindFirstChildWhichIsA("Tool") 
+    if Tool then
+        if Tool:FindFirstChild("Style") then
+        return Tool
+        end
+    end
+end
+
+local function CheckIfRunning()
+    for i,v in pairs(Player.Character.Humanoid.Animator:GetPlayingAnimationTracks()) do
+        if v.Animation.AnimationId == "rbxassetid://16715338319" then
+            if v.IsPlaying == true then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function StartRun()
+    if not CheckIfRunning() then
+        VirtualInputManager:SendKeyEvent(false, "W", false, game)
+        VirtualInputManager:SendKeyEvent(false, "S", false, game)
+        task.wait()
+        VirtualInputManager:SendKeyEvent(true, "S", false, game)
+        VirtualInputManager:SendKeyEvent(true, "W", false, game)
+        task.wait(.2)
+        VirtualInputManager:SendKeyEvent(false, "W", false, game)
+        VirtualInputManager:SendKeyEvent(true, "W", false, game)
+        task.wait(.5)
+    end
+end
+
+local function GetFood()
+    for i,v in pairs(Player.Backpack:GetDescendants()) do
+        if v:FindFirstChild("FoodScript") then
+            return v
+        end
+    end
+end
+
+local function CheckFatigue()
+    local Fatigue, Numbers = string.gsub(Player.PlayerGui.MainGui.Utility.BodyFatigue.Text, "%D", "")
+    local Hunger = Player.PlayerGui.MainGui.Utility.StomachBar.BarF.Bar.Size.X.Scale * 100
+    if tonumber(Fatigue) >= 6500 or Hunger < 17.5 then
+        PlaySound()
+        SendWebhook(" You Reached Max Fatigue [65%] at " .. os.date())
+
+        if Kick then
+            repeat task.wait() until not Player.PlayerGui.MainGui.Utility.CombatTag.Visible
+            Player:Kick("65 Fatigue Reached Or No Hunger")
+        end
+
+        repeat Fatigue, Numbers = string.gsub(Player.PlayerGui.MainGui.Utility.BodyFatigue.Text, "%D", "") task.wait(.5) until tonumber(Fatigue) <= 0
+        
+        SendWebhook(" You Reached Zero Fatigue at " .. os.date())
+
+        return false
+    else
+        return true
+    end
+end
+
+local function GetDura()
+    for i,v in pairs(workspace:GetDescendants()) do
+        if string.match(v.Name, 'Durability Training') and v:FindFirstChild('ClickDetector') then
+            local Distance = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).Magnitude
+
+            if Distance <= v.ClickDetector.MaxActivationDistance then  
+                return v
+            end
+        end
+    end
+end
+
+
+local function GetSS()
+    for i,v in pairs(workspace:GetDescendants()) do
+        if string.match(v.Name, 'Strike Speed Training') and v:FindFirstChild('ClickDetector') then
+            local Distance = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).Magnitude
+
+            if Distance <= v.ClickDetector.MaxActivationDistance then  
+                return v
+            end
+        end
+    end
+end
+
+local function GetMachine(Type)
+	if Type == 'Treadmill' then
+		for i,v in pairs(workspace:GetDescendants()) do
+			if v.Name == 'Machine' and v:FindFirstChild('ClickDetector') and v:FindFirstChild('Steel') then
+				local Distance = (Player.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).Magnitude
+
+				if Distance <= 10  then
+                    return v
+				end
+			end
+		end
+    elseif Type == 'BenchPress' then
+        for i,v in pairs(workspace:GetDescendants()) do
+			if v.Name == 'Machine' and v:FindFirstChild('ClickDetector') and v:FindFirstChild('MeshPart') then
+				local Distance = (Player.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).Magnitude
+
+				if Distance <= 10 then
+					return v
+				end
+			end
+		end
+    elseif Type == 'SquatMachine' then
+        for i,v in pairs(workspace:GetDescendants()) do
+			if v.Name == 'Machine' and v:FindFirstChild('ClickDetector') and not v:FindFirstChild('MeshPart') and not v:FindFirstChild('Steel') then
+				local Distance = (Player.Character.HumanoidRootPart.Position - v.PrimaryPart.Position).Magnitude
+
+				if Distance <= 10 then
+                    return v
+				end
+			end
+		end
+	end
+end
+
+--LetHimCook("Chicken")
+
+
+local Library = Material.Load({
+    Title = "Mighty Omega | v1.0.0",
+    Style = 3,
+    SizeX = 250,
+    SizeY = 270,
+    Theme = "Dark",
+    ColorOverrides = {
+        MainFrame = Color3.fromRGB(0,0,0)
+    }
+})
+
+local Home = Library.New({
+    Title = "Home"
+})
+
+local Machines = Library.New({
+    Title = "Machines"
+})
+
+local Dura = Library.New({
+    Title = "Dura"
+})
+
+local Food = Library.New({
+    Title = "Food"
+})
+
+local Misc = Library.New({
+    Title = "Misc"
+})
+
+local AutoSPToggle = Home.Toggle({
+    Text = "Auto StrikePower",
+    Callback = function(Value)
+        AutoStrikePower = Value
+
+        while AutoStrikePower and CheckFatigue() do
+
+            local Stamina = (Player.Character.CurrentStamina.Value/Player.Character.MaxStamina.Value) * 100
+            local BodyHeat = (Player.Character.BodyHeat.Value/Player.Character.BodyHeat.Max.Value) * 100
+
+            if BodyHeat <= TargetBodyHeat and not Eating and CheckFatigue() then
+                repeat  
+                    if not CheckIfRunning() then StartRun() end
+                    Stamina = (Player.Character.CurrentStamina.Value/Player.Character.MaxStamina.Value) * 100
+                    BodyHeat = (Player.Character.BodyHeat.Value/Player.Character.BodyHeat.Max.Value) * 100
+                    task.wait(.1)
+                until BodyHeat >= (TargetBodyHeat + 5) or not AutoStrikePower or Stamina <= MinStam or Eating or not CheckFatigue()
+
+                if CheckIfRunning() then 
+                    VirtualInputManager:SendKeyEvent(false, "W", false, game)
+                    VirtualInputManager:SendKeyEvent(false, "S", false, game)
+                end
+
+            elseif BodyHeat >= TargetBodyHeat and Stamina >= MaxStam and not Eating and CheckFatigue() then
+                local Combat = GetCombat()
+                Combat.Parent = Player.Character
+                
+                if ChargeRhythm then
+                    VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                    VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                end
+
+                repeat
+                    BodyHeat = (Player.Character.BodyHeat.Value/Player.Character.BodyHeat.Max.Value) * 100
+                    Stamina = (Player.Character.CurrentStamina.Value/Player.Character.MaxStamina.Value) * 100
+                    Combat.Parent = Player.Character
+                    Combat:Activate()
+                    if UseM2 then
+                        VirtualInputManager:SendMouseButtonEvent(200,10,1,true,game,0)
+                        VirtualInputManager:SendMouseButtonEvent(200,10,1,false,game,0)
+                    end
+                    task.wait()
+                until BodyHeat <= TargetBodyHeat or Stamina <= MinStam or not AutoStrikePower or Eating or not CheckFatigue()
+
+                Combat.Parent = Player.Backpack
+		Combat.Parent = Player.Character
+            end
+            task.wait()
+        end
+    end,
+    Enabled = false
+})
+
+local M2Toggle = Home.Toggle({
+    Text = "Use M2",
+    Callback = function(Value)
+        UseM2 = Value
+    end,
+    Enabled = false
+})
+
+local TargetHeat = Home.Slider({
+	Text = "TargetBodyHeat%",
+	Callback = function(Value)
+        TargetBodyHeat = Value
+	end,
+	Min = 0,
+	Max = 100,
+	Def = 25
+})
+
+local MaxStamSlider = Home.Slider({
+	Text = "MaxStam%",
+	Callback = function(Value)
+        MaxStam = Value
+	end,
+	Min = 0,
+	Max = 100,
+	Def = 65
+})
+
+local MinStamSlider = Home.Slider({
+	Text = "MinStam%",
+	Callback = function(Value)
+        MinStam = Value
+	end,
+	Min = 0,
+	Max = 100,
+	Def = 5
+})
+
+local AutoSSToggle = Home.Toggle({
+    Text = "Auto StrikeSpeed",
+    Callback = function(Value)
+        AutoStrikeSpeed = Value
+
+        while AutoStrikeSpeed and CheckFatigue() do
+
+            if Player.PlayerGui:FindFirstChild("SpeedTraining") and CheckFatigue() and not Eating then
+                local Stamina = (Player.Character.CurrentStamina.Value/Player.Character.MaxStamina.Value) * 100
+                local Combat = GetCombat()
+
+                Combat.Parent = Player.Character
+
+                if ChargeRhythm then
+                    VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                    VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                end
+
+                if Player.PlayerGui:FindFirstChild("SpeedTraining") then
+                    if Player.PlayerGui.SpeedTraining.CanHit.Value then
+                        repeat task.wait()
+                        Combat.Parent = Player.Character
+                        Combat:Activate()
+                        if UseM2 then
+                            VirtualInputManager:SendMouseButtonEvent(200,10,1,true,game,0)
+                            VirtualInputManager:SendMouseButtonEvent(200,10,1,false,game,0)
+                        end
+                        task.wait(SSTiming)
+                        until not Player.PlayerGui:FindFirstChild("SpeedTraining") or Eating or not AutoStrikeSpeed
+                    end
+                end
+
+                Combat.Parent = Player.Backpack
+            else
+                local StrikingSpeedPad = GetSS()
+                
+                if StrikingSpeedPad and CheckFatigue() and not Eating then
+                    repeat task.wait() 
+                        fireclickdetector(StrikingSpeedPad.ClickDetector)
+                        VirtualInputManager:SendMouseButtonEvent(Mouse.ViewSizeX/2,Mouse.ViewSizeY/2,0,true,game,0)
+                        VirtualInputManager:SendMouseButtonEvent(Mouse.ViewSizeX/2,Mouse.ViewSizeY/2,0,false,game,0)
+                    until Player.Character:FindFirstChild("Strike Speed Training") or Player.Backpack:FindFirstChild("Strike Speed Training") or not AutoStrikeSpeed
+                    local StrikeSpeedTraining = Player.Character:FindFirstChild("Strike Speed Training") or Player.Backpack:FindFirstChild("Strike Speed Training")
+                    if StrikeSpeedTraining then
+                        StrikeSpeedTraining.Parent = Player.Character
+                        StrikeSpeedTraining:Activate()
+                        task.wait()
+                        StrikeSpeedTraining.Parent = Player.Backpack
+                    end
+                else
+                    task.wait(2.5)
+                end
+            end
+            task.wait()
+        end
+    end,
+    Enabled = false
+})
+
+local SSTimingSlider
+SSTimingSlider = Home.Slider({
+	Text = "SSTiming | 0.95",
+	Callback = function(Value)
+        local Value = Value/100
+        SSTimingSlider:SetText("SSTiming | "..Value)
+        SSTiming = Value
+	end,
+	Min = 0,
+	Max = 200,
+	Def = 95
+})
+
+local function FireButton(button)
+    local size = button.AbsoluteSize;
+    local pos = button.AbsolutePosition;
+    local inset = game:GetService("GuiService"):GetGuiInset();
+    local center = {
+        x = (pos.X+inset.X)+(size.X/2);
+        y = (pos.Y+inset.Y)+(size.Y/2);
+    }
+    VirtualInputManager:SendMouseButtonEvent(center.x,center.y,0,true,game,0);
+    task.wait(0.1);
+    VirtualInputManager:SendMouseButtonEvent(center.x,center.y,0,false,game,0);
+
+	--[[for i,v in pairs(getconnections(btn.MouseButton1Click)) do
+		v.Function()
+	end]]
+end
+
+local function safeClick(part)
+    if (Player.Character.HumanoidRootPart.Position - part.WorldPivot.Position).Magnitude <= 10 then
+        local posOnC = workspace.Camera:WorldToScreenPoint(part.Position);
+        local inset = GuiService:GetGuiInset();
+        local center = {
+            x = (posOnC.X+inset.X)+(part.Size.X/2);
+            y = (posOnC.Y+inset.Y)+(part.Size.Y/2);
+        }
+        VirtualInputManager:SendMouseMoveEvent(center.x,center.y,game);
+        task.wait(0.1);
+        VirtualInputManager:SendMouseButtonEvent(center.x,center.y,0,true,game,0);
+        task.wait(0.1);
+        VirtualInputManager:SendMouseButtonEvent(center.x,center.y,0,false,game,0);
+    end
+end
+
+local AutoMachinesToggle = Machines.Toggle({
+    Text = "Auto Machines",
+    Callback = function(Value)
+        AutoMachines = Value
+
+        if Value == false then
+            CanEat = true
+        end
+
+        while AutoMachines and CheckFatigue() do
+            local Success, Error = pcall(function()
+                if not MachineType or not MachineLevel then return end
+    
+                local Stamina = (Player.Character.CurrentStamina.Value/Player.Character.MaxStamina.Value) * 100
+    
+    
+                if MachineType == "Treadmill" then
+                    if not TreadType then return end
+    
+                    if Player.PlayerGui:FindFirstChild("TreadmillMachineGUI") and CheckFatigue() and not Eating then
+    
+                        CanEat = false
+    
+                        if Player.PlayerGui.TreadmillMachineGUI.Frame.Visible then
+                            FireButton(Player.PlayerGui.TreadmillMachineGUI.Frame.StatPickF[TreadType])
+                            task.wait(.25)
+                        elseif Player.PlayerGui.TreadmillMachineGUI.Frame2.Visible then
+                            if Player.PlayerGui.TreadmillMachineGUI.Frame2.ListF:FindFirstChild(MachineLevel) then
+                                FireButton(Player.PlayerGui.TreadmillMachineGUI.Frame2.ListF[MachineLevel])
+                            end
+                            task.wait(.25)
+                        elseif Player.PlayerGui.TreadmillMachineGUI.Frame3.Visible then
+    
+                            if Player.PlayerGui.TreadmillMachineGUI.Frame3.Start.Visible and Stamina >= MachineMaxStam then
+                                task.spawn(function()
+                                    FireButton(Player.PlayerGui.TreadmillMachineGUI.Frame3.Start)
+                                    task.wait(0.25)
+                                end)
+                            end
+    
+                            if Player.PlayerGui.TreadmillMachineGUI.Frame3.TrainingF.Visible then
+                                if (Player.PlayerGui.TreadmillMachineGUI.Frame3.TrainingF.ButtonTemplate.Input.TextColor3 == Color3.fromRGB(255,255,255)) and Stamina >= MinStam then
+                                    task.wait(Random.new():NextNumber(0.1, 0.2))
+                                    VirtualInputManager:SendKeyEvent(true, Player.PlayerGui.TreadmillMachineGUI.Frame3.TrainingF.ButtonTemplate.Input.Text, false, game)
+                                    VirtualInputManager:SendKeyEvent(false, Player.PlayerGui.TreadmillMachineGUI.Frame3.TrainingF.ButtonTemplate.Input.Text, false, game)
+                                end
+                            end
+    
+                            if Stamina <= MinStam then
+                                repeat wait() until Stamina >= MachineMaxStam or not AutoMachines or not Player.PlayerGui:FindFirstChild("TreadmillMachineGUI")
+                            end
+                        end
+                    else
+                        local Hunger = Player.PlayerGui.MainGui.Utility.StomachBar.BarF.Bar.Size.X.Scale * 100
+                        if Hunger < AutoEatPercentage then
+                            CanEat = true
+                            task.wait(0.2)
+                        end
+                        local Machine = GetMachine(MachineType)
+                        if Machine and not Eating then
+                            fireclickdetector(Machine.ClickDetector)
+                            safeClick(Machine)
+                            task.wait(.25)
+                        else
+                            task.wait(2.5)
+                        end
+                    end
+                    
+                elseif MachineType == "BenchPress" or MachineType == "SquatMachine" then
+                    
+                    local MachineGui = Player.PlayerGui:FindFirstChild("BarbellMachineGUI") or Player.PlayerGui:FindFirstChild("SquatMachineGUI")
+    
+                    if MachineGui and CheckFatigue() and not Eating then
+                        if MachineGui.Frame.Visible then
+                            if MachineGui.Frame.ListF:FindFirstChild('Barbell '.. MachineLevel ..' Weight') then
+                                FireButton(MachineGui.Frame.ListF['Barbell '.. MachineLevel ..' Weight'])
+                            end
+                            task.wait(.25)
+                        elseif MachineGui.Frame2.Visible then
+                            if MachineGui.Frame2.Start.Visible and Stamina >= MachineMaxStam then
+                                task.spawn(function()
+                                    FireButton(MachineGui.Frame2.Start)
+                                    task.wait(.25)
+                                end)
+                            end
+    
+                            if MachineGui.Frame2.LiftingF.Visible and Stamina >= MinStam then
+                                for i,v in pairs(MachineGui.Frame2.LiftingF:GetChildren()) do
+                                    if v.Name == 'LiftIcon' then
+                                        task.wait(Random.new():NextNumber(0.1,0.2))
+                                        FireButton(v)
+                                    end
+                                end
+                            end
+    
+                            if Stamina <= MinStam then
+                                repeat wait() until Stamina >= MachineMaxStam or not AutoMachines or not MachineGui
+                            end
+                        end
+                    else
+                        local Hunger = Player.PlayerGui.MainGui.Utility.StomachBar.BarF.Bar.Size.X.Scale * 100
+                        if Hunger < AutoEatPercentage then
+                            CanEat = true
+                            task.wait(0.2)
+                        end
+                        local Machine = GetMachine(MachineType)
+                        if Machine and not Eating then
+                            fireclickdetector(Machine.ClickDetector)
+                            safeClick(Machine)
+                            task.wait(.25)
+                        else
+                            task.wait(2.5)
+                        end
+                    end
+                end
+                task.wait(.1)
+            end)
+            if Error then
+                print(Error)
+            end
+            task.wait()
+        end
+    end,
+    Enabled = false
+})
+
+local MachineTypeDropDown = Machines.Dropdown({
+	Text = "Machine",
+	Callback = function(Value)
+        MachineType = Value
+	end,
+	Options = {
+        "Treadmill",
+        "SquatMachine",
+        "BenchPress",
+    },
+	Menu = {
+		Information = function(self)
+			Library.Banner({
+				Text = "Select your machine."
+			})
+		end
+	}
+})
+
+local TreadTypeDropDown = Machines.Dropdown({
+	Text = "Tread Type",
+	Callback = function(Value)
+        TreadType = Value
+	end,
+	Options = {
+        "Stamina",
+        "RunningSpeed",
+    },
+	Menu = {
+		Information = function(self)
+			Library.Banner({
+				Text = "Select your stat."
+			})
+		end
+	}
+})
+
+local MachineLevelDropDown = Machines.Dropdown({
+	Text = "Level",
+	Callback = function(Value)
+        MachineLevel = Value
+	end,
+	Options = {
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+    },
+	Menu = {
+		Information = function(self)
+			Library.Banner({
+				Text = "Select your level"
+			})
+		end
+	}
+})
+
+local MachineMaxStamSlider = Machines.Slider({
+	Text = "Max Stam%",
+	Callback = function(Value)
+        MachineMaxStam = Value
+	end,
+	Min = 0,
+	Max = 100,
+	Def = 100
+})
+
+local MachineMinStamSlider = Machines.Slider({
+	Text = "Min Stam%",
+	Callback = function(Value)
+        MachineMinStam = Value
+	end,
+	Min = 0,
+	Max = 100,
+	Def = 5
+})
+
+
+local FoodDropDown = Food.Dropdown({
+	Text = "Cook",
+	Callback = function(Value)
+		SelectedFood = Value
+	end,
+	Options = {
+        "Braised Potatoes",
+        "Curry",
+        "Chicken",
+        "Marinade Lobster",
+        "Onigiri",
+        "Steak",
+        "Sunny side up egg",
+        "Steak Fried Rice",
+        "Grotesque Food",
+    },
+	Menu = {
+		Information = function(self)
+			Library.Banner({
+				Text = "Select Your Food! uwu"
+			})
+		end
+	}
+})
+
+local AutoCookToggle = Food.Toggle({
+    Text = "AutoCook",
+    Callback = function(Value)
+        AutoCook = Value
+
+        while AutoCook do
+            if SelectedFood ~= nil and not CookingDebounce then
+                LetHimCook(SelectedFood)
+            end
+            task.wait(0.5)
+        end
+    end,
+    Enabled = false
+})
+
+local AutoEatToggle = Food.Toggle({
+    Text = "AutoEat",
+    Callback = function(Value)
+        AutoEat = Value
+
+        while AutoEat do
+            local Hunger = Player.PlayerGui.MainGui.Utility.StomachBar.BarF.Bar.Size.X.Scale * 100
+            if Hunger < AutoEatPercentage and CanEat then
+
+                Eating = true
+
+                if not GetFood() then
+                    SendWebhook(" Ran Out Of Food At " .. os.date())
+                    PlaySound()
+                    if Kick then
+                        Player:Kick("Ran Out Of Food At " .. os.date())
+                    end
+                    AutoEat = false
+                end
+
+                repeat 
+                    Hunger = Player.PlayerGui.MainGui.Utility.StomachBar.BarF.Bar.Size.X.Scale * 100
+                    local Food = GetFood()
+                    local Combat = GetCombat()
+
+                    if Food then
+                        pcall(function()
+                            Combat.Parent = Player.Backpack
+                        end)
+                        Food.Parent = Player.Character
+                        Food:Activate()
+                        task.wait(4) 
+
+                        pcall(function()
+                            Food.Parent = Player.Backpack
+                        end)
+                    end
+                    task.wait()
+                until Hunger > 80 or not AutoEat or not GetFood()
+
+                Eating = false
+            end
+            task.wait()
+        end
+    end,
+    Enabled = false
+})
+
+local AutoEatSlider = Food.Slider({
+	Text = "AutoEat%",
+	Callback = function(Value)
+        AutoEatPercentage = Value
+	end,
+	Min = 0,
+	Max = 100,
+	Def = 25
+})
+
+local TempFirst = nil
+local TempSecond = nil
+local DuraSwitched = false
+
+local DuraToggle = Dura.Toggle({
+    Text = "Auto Dura",
+    Callback = function(Value)
+        AutoDura = Value
+
+        while AutoDura and CheckFatigue() do
+            task.wait(.5)
+
+            if DuraFirst == nil then return end
+            if DuraSecond == nil then return end
+            local Player1 = Players:FindFirstChild(DuraFirst)
+            local Player2 = Players:FindFirstChild(DuraSecond)
+            local HealthPercent
+            local OtherHealthPercent
+            if not TempFirst then TempFirst = Player1 end
+            if not TempSecond then TempSecond = Player2 end
+
+            if TempFirst == Player and CheckFatigue() then
+                local Dura = GetDura()
+                if Dura and Player.Character.Humanoid.Health == Player.Character.Humanoid.MaxHealth and not Player.Character:FindFirstChild("DuraTrain") and not Eating then
+                    CanEat = false
+                    repeat 
+                        fireclickdetector(Dura.ClickDetector)
+                        VirtualInputManager:SendMouseButtonEvent(Mouse.ViewSizeX/2,Mouse.ViewSizeY/2,0,true,game,0)
+                        VirtualInputManager:SendMouseButtonEvent(Mouse.ViewSizeX/2,Mouse.ViewSizeY/2,0,false,game,0)
+                        task.wait(.1)
+                    until Player.Character:FindFirstChild("Durability Training") or Player.Backpack:FindFirstChild("Durability Training") or not AutoDura
+
+                    local DuraTool = Player.Character:FindFirstChild("Durability Training") or Player.Backpack:FindFirstChild("Durability Training")
+
+                    if DuraTool then
+                        DuraTool.Parent = Player.Character
+                        DuraTool:Activate()
+
+                        task.wait(1)
+                        repeat 
+                            task.wait() 
+                            HealthPercent = (Player.Character.Humanoid.Health/Player.Character.Humanoid.MaxHealth) * 100
+                        until not Player.Character:FindFirstChild("DuraTrain") or HealthPercent <= DuraHitUntil or not AutoDura
+                        task.wait(1)
+
+                        pcall(function()
+                            DuraTool.Parent = Player.Character
+                        end)
+                        DuraTool:Activate()
+
+                        if DuraTakeTurns then
+                            if DuraSwitched then
+                                TempFirst = Player1
+                                TempSecond = Player2
+                                DuraSwitched = false
+                            elseif not DuraSwitched then
+                                TempFirst = Player2
+                                TempSecond = Player1
+                                DuraSwitched = true
+                            end
+                            if TempSecond.Name == DuraSecond then
+                                CanEat = true
+                                print("CanEat")
+                                task.wait(0.25)
+                            end
+                        else
+                            CanEat = true
+                        end
+                    end
+                end
+            elseif TempSecond == Player then
+                local Combat = GetCombat()
+
+                if TempFirst then
+                    if TempFirst.Character:FindFirstChild("DuraTrain") and not Eating then
+                        Combat.Parent = Player.Character
+
+                        if ChargeRhythm then
+                            VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                            VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                        end
+
+                        repeat 
+                            task.wait()
+                            local Stamina = (Player.Character.CurrentStamina.Value/Player.Character.MaxStamina.Value) * 100
+                            OtherHealthPercent = ((TempFirst.Character.Humanoid.Health/TempFirst.Character.Humanoid.MaxHealth) * 100)
+
+                            if Stamina >= 10 then
+                                Combat.Parent = Player.Character
+                                Combat:Activate()
+                                VirtualInputManager:SendMouseButtonEvent(200,10,1,true,game,0)
+                                VirtualInputManager:SendMouseButtonEvent(200,10,1,false,game,0)
+                            end
+                            task.wait()
+                        until not TempFirst.Character:FindFirstChild("DuraTrain") or OtherHealthPercent <= DuraHitUntil or not AutoDura
+
+                        Combat.Parent = Player.Backpack
+
+                        if DuraTakeTurns then
+                            if DuraSwitched then
+                                TempFirst = Player1
+                                TempSecond = Player2
+                                DuraSwitched = false
+                            elseif not DuraSwitched then
+                                TempFirst = Player2
+                                TempSecond = Player1
+                                DuraSwitched = true
+                            end
+                            if TempFirst.Name == DuraFirst then
+                                CanEat = true
+                                print("CanEat")
+                                task.wait(0.25)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+    if not AutoDura then
+        CanEat = true
+        TempFirst = nil
+        TempSecond = nil
+    end
+    end,
+    Enabled = false
+})
+
+local TakeTurnsToggle = Dura.Toggle({
+    Text = "Take Turns",
+    Callback = function(Value)
+        DuraTakeTurns = Value
+    end,
+    Enabled = false
+})
+
+local FirstDropdown = Dura.Dropdown({
+	Text = "First",
+	Callback = function(Value)
+        DuraFirst = Value
+        print(DuraFirst)
+	end,
+	Options = GetAllPlayerNames(),
+
+	Menu = {
+		Information = function(self)
+			Library.Banner({
+				Text = "First Turn or who is poping dura. This should be the same on both clients!"
+			})
+		end
+	}
+})
+
+local SecondDropdown = Dura.Dropdown({
+	Text = "Second",
+	Callback = function(Value)
+        DuraSecond = Value
+        print(DuraSecond)
+	end,
+	Options = GetAllPlayerNames(),
+
+	Menu = {
+		Information = function(self)
+			Library.Banner({
+				Text = "Second Turn or who is hitting. This should be the same on both clients!"
+			})
+		end
+	}
+})
+
+local HealthSlider = Dura.Slider({
+	Text = "Hit Until%",
+	Callback = function(Value)
+        DuraHitUntil = Value
+	end,
+	Min = 0,
+	Max = 100,
+	Def = 15
+})
+
+local RhythmToggle = Misc.Toggle({
+    Text = "Charge Rhythm",
+    Callback = function(Value)
+        ChargeRhythm = Value
+    end,
+    Enabled = false
+})
+
+local Mounter = nil
+local CombatDebouce = false
+
+local Trigger = Misc.Toggle({
+    Text = "Triggered",
+    Callback = function(Value)
+        Trigger = Value
+
+        if Trigger then
+            task.spawn(function()
+                local EventCombat = Player.PlayerGui.MainGui.Utility.CombatTag:GetPropertyChangedSignal("Visible"):Connect(function()
+                    if Player.PlayerGui.MainGui.Utility.CombatTag.Visible == true and not CombatDebouce and not AutoDura then
+                        CombatDebouce = true
+                        local NearPlayers = GetNearPlayers()
+                        SendWebhook(" You were put in combat at " .. os.date())
+                        PlaySound()
+
+                        for i,v in pairs(NearPlayers) do
+                            SendWebhook(" You were put in combat by " .. v.Name .. ' ('.. v.Character.Humanoid.DisplayName.. ') '.. v.UserId)
+                            task.wait()
+                        end
+
+                        task.delay(10, function()
+                            CombatDebouce = false
+                        end)
+                    end
+                end)
+                table.insert(Triggers, EventCombat)
+            end)
+
+            task.spawn(function()
+                local EventGrip = Player.Character.Humanoid.Died:Connect(function()
+                    PlaySound()
+                    SendWebhook(' You were gripped at '.. os.date().. ' By: '.. Mounter.Name.. ' ('.. Mounter.Humanoid.DisplayName.. ') '.. Players:FindFirstChild(Mounter.Name).UserId)
+                    if Kick then
+                        task.wait(10)
+                        Player:Kick('You were gripped at '.. os.date().. ' By: '.. Mounter.Name.. ' ('.. Mounter.Humanoid.DisplayName.. ') '.. Players:FindFirstChild(Mounter.Name).UserId)
+                    end
+                end)
+                table.insert(Triggers, EventGrip)
+            end)
+
+            task.spawn(function()
+                local EventMount = Player.Character.DescendantAdded:Connect(function(Part)
+                    if Part.Name == "Mounted" then
+                        Mounter = Player.Character.Mounted.Value
+                        PlaySound() 
+                        SendWebhook(' You were mounted at '.. os.date().. ' By: '.. Mounter.Name.. ' ('.. Mounter.Humanoid.DisplayName.. ') '.. Players:FindFirstChild(Mounter.Name).UserId)
+                    end
+                end)
+                table.insert(Triggers, EventMount)
+            end)
+        else
+            for i, v in pairs(Triggers) do
+		        v:Disconnect()
+		        Triggers[i] = nil
+	        end
+        end
+    end,
+    Enabled = false
+})
+
+local KickToggle = Misc.Toggle({
+    Text = "Kick If Triggered",
+    Callback = function(Value)
+        Kick = Value
+    end,
+    Enabled = false
+})
+
+local AutoSkillXP = false
+local HealthParts = {}
+
+local function FireHealPad()
+    for i,v in pairs(HealthParts) do
+        local TimeUsed = v:GetAttribute("LastUsed") or 0
+    
+        if (os.clock() - TimeUsed) > 4 or not TimeUsed then
+            fireclickdetector(v.ClickDetector)
+            v:SetAttribute("LastUsed", os.clock())
+            task.wait(.5)
+
+            return true
+        else
+            print("Waiting for CD")
+        end
+    end
+end
+
+local AutoEXP = Misc.Toggle({
+    Text = "Auto Skill Exp",
+    Callback = function(Value)
+        AutoSkillXP = Value
+
+        if game.PlaceId ~= 6745592527 then return end
+
+        for i,v in pairs(workspace:GetChildren()) do
+            if v.Name == "HealthPart" then
+                table.insert(HealthParts, v)
+            end
+        end
+
+        if AutoSkillXP then
+            Player.Character.HumanoidRootPart.Anchored = true
+        else
+            Player.Character.HumanoidRootPart.Anchored = false
+        end
+
+        task.spawn(function()
+            while AutoSkillXP do
+                for i,v in pairs(workspace.Live:GetChildren()) do 
+                    if v.Name == "Dummy" and #Players:GetPlayers() == 1 then
+                        for i, Part in pairs(v:GetChildren()) do
+                            if Part:IsA("MeshPart") or Part:IsA("Part") then
+                                Part.CanCollide = false
+                            end
+                        end
+                        pcall(function()
+                            v.HumanoidRootPart.CFrame = Player.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,-4)
+                            v.HumanoidRootPart.AssemblyAngularVelocity = Vector3.new(17.325,17.325,17.325)
+                            v.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(17.325,17.325,17.325)
+                        end)
+                    end
+                end
+                task.wait(.1)
+            end
+        end)
+
+        while AutoSkillXP do
+            task.wait(.1)
+            for i,v in pairs(Player.PlayerGui.BackpackGUI.Frame:GetChildren()) do
+                if v.Name == "One" or v.Name == "Two" or v.Name == "Three" or v.Name == "Four" or v.Name == "Five" or v.Name == "Six" or v.Name == "Seven" then
+                    if v.ToolName.Text ~= "" and not v.CD.Visible and not Eating then
+                        print(v.Name)
+                        local Tool = Player.Backpack:FindFirstChild(v.ToolName.Text) or Player.Character:FindFirstChild(v.ToolName.Text)
+                        if Tool then
+                            Tool.Parent = Player.Character
+                            Tool:Activate()
+                            task.wait()
+                            Tool.Parent = Player.Backpack
+                            
+                            FireHealPad()
+                            task.wait(.25)
+                            
+                            else
+                            print("No ToolFound")
+                        end
+                        task.wait()
+                    end
+                end
+            end
+        end
+    end,
+    Enabled = false
+})
+
+local AutoRun = false
+
+local RunInPlace = Misc.Toggle({
+    Text = "Run in place",
+    Callback = function(Value)
+        AutoRun = Value
+
+        while AutoRun do
+            StartRun()
+            task.wait(.1)
+        end
+        
+    end,
+    Enabled = false
+})
+
+
+local ViewList = {}
+
+local CurrentlyViewing = nil
+local CurrentViewer = nil
+local PreviousViewer = nil
+
+local function GetButton(Name)
+    for i,v in pairs(Player.PlayerGui.PlayerList.Frame.ScrollF:GetDescendants()) do
+        if v.Parent.Name == Name then
+            return v.Parent
+        end
+    end
+end
+
+local function AttachButton(Button)
+    local Victim = Button.Parent.Name
+    ViewList[Button.Parent] = Button.MouseButton1Down:Connect(function()
+        if CurrentlyViewing and CurrentViewer and PreviousViewer then
+            local OtherButton = GetButton(CurrentViewer)
+            if OtherButton then
+                OtherButton.User.Txt.TextColor3 = Color3.new(255,255,255)
+            end
+
+            CurrentViewer = Victim
+
+            if CurrentViewer ~= PreviousViewer then
+                Button.Txt.TextColor3 = Color3.new(255,0,0)
+                pcall(function()
+                    workspace.CurrentCamera.CameraSubject = Players:FindFirstChild(Victim).Character
+                end)
+                PreviousViewer = Victim
+                CurrentlyViewing = true
+            else
+                CurrentlyViewing = false
+                CurrentViewer = Player.Name
+                PreviousViewer = Player.Name
+                workspace.CurrentCamera.CameraSubject = Player.Character
+            end
+        elseif not CurrentlyViewing then
+            Button.Txt.TextColor3 = Color3.new(255,0,0)
+            pcall(function()
+                workspace.CurrentCamera.CameraSubject = Players:FindFirstChild(Victim).Character
+            end)
+            CurrentlyViewing = true
+            CurrentViewer = Victim
+            PreviousViewer = Victim
+        end
+    end)
+end
+
+for i,v in pairs(Player.PlayerGui.PlayerList.Frame.ScrollF:GetDescendants()) do
+    if v:IsA('TextButton') and v.Name ~= "Icon" then
+        AttachButton(v)
+    end
+end
+
+local PlayerListAdded = Player.PlayerGui.PlayerList.Frame.ScrollF.ChildAdded:Connect(function(v)
+    AttachButton(v.User)
+end)
+
+table.insert(Events, PlayerListAdded)
+
+local PlayerListRemoved = Player.PlayerGui.PlayerList.Frame.ScrollF.ChildRemoved:Connect(function(v)
+    if CurrentlyViewing and CurrentViewer then
+        if CurrentViewer == v.Name then
+            workspace.CurrentCamera.CameraSubject = Player.Character
+            CurrentViewer = Player.Name
+            PreviousViewer = Player.Name
+            CurrentlyViewing = false
+        end
+    end
+    if ViewList[v] then
+        ViewList[v]:Disconnect()
+        ViewList[v] = nil
+    end
+end)
+
+table.insert(Events, PlayerListRemoved)
+
+
+local Group = game:GetService("GroupService")
+local groupID = 4800422
+
+local Admins = {
+    3303198506,
+    318263297,
+    4178031441,
+}
+
+local Prefix = "/e"
+
+local Commands = {}
+
+local function IsAdmin(Player)
+	for _,Admin in pairs (Admins) do
+		--print(Admin,Player)
+		if type(Admin) == "string" and string.lower(Admin) == string.lower(Player.Name) then
+			return true
+		elseif type(Admin) == "number" and Admin == Player.UserId then
+			return true
+		--[[elseif type(Admin) == "table" then
+			local Rank = Player:GetRankInGroup(Admin.GroupId)
+			if Rank >= (Admin.RankId or 1) then
+				return true
+			end]]
+		end
+	end
+	return false
+end
+
+Commands.kick = function(Sender, Arguments)
+    if IsAdmin(Sender) then
+        local Username = Arguments[1]
+        table.remove(Arguments, 1)
+        local Message = table.concat(Arguments, " ")
+    
+        if Username == string.lower(Player.Name) then
+            Player:Kick(Message)
+    
+            SendWebhook(' You were kicked at '.. os.date().. ' By: '.. Sender.Name.. ' For: ' .. Message)
+        end
+    end
+end
+
+Commands.toggle = function(Sender, Arguments)
+    if string.lower(Sender.Name) == string.lower(Player.Name) then
+        getgenv().OldInstance.MainFrame.Visible = not getgenv().OldInstance.MainFrame.Visible
+    end
+end
+
+local function ParseMessage(Player,Message)
+	Message = string.lower(Message)
+	local PrefixMatch = string.match(Message,"^"..Prefix)
+	
+	if PrefixMatch then
+		Message = string.gsub(Message,PrefixMatch,"",1)
+		local Arguments = {}
+		
+		for Argument in string.gmatch(Message,"[^%s]+") do
+			table.insert(Arguments,Argument)
+		end
+		
+		local CommandName = Arguments[1]
+		table.remove(Arguments,1)
+		local CommandFunc = Commands[CommandName]
+		
+		if CommandFunc ~= nil then
+			CommandFunc(Player,Arguments)
+		end
+	end
+end
+
+for i,v in pairs(Players:GetChildren()) do
+    v.Chatted:Connect(function(Message,Recipient)
+		if not Recipient --[[and IsAdmin(v)]] then
+			ParseMessage(v,Message)
+		end
+	end)
+end
+
+local PlayersJoined = Players.PlayerAdded:Connect(function(Player)
+    local PlayerID = Player.UserId
+
+    Player.Chatted:Connect(function(Message,Recipient)
+		if not Recipient --[[and IsAdmin(Player)]] then
+			ParseMessage(Player,Message)
+		end
+	end)
+
+    local Success, Result = pcall(function()
+        return Group:GetGroupsAsync(PlayerID)
+    end)
+    
+    if Success then
+        for _, value in pairs(Result) do
+            if value["Id"] == groupID then
+                if value["Role"] == "Mod" or value["Role"] == "Associates." or value["Role"] == "Owner" then
+                    print(value["Role"]) -- prints the Role of the player
+                    print(value["Rank"]) -- prints the Rank of the player
+                    print(Player.Name)
+                    SendWebhook(Player.Name .. " " .. PlayerID .. " " .. value["Role"] .. " has Joined you at " .. os.date())
+                    PlaySound()
+                end
+            end
+        end
+    else
+        for i,v in pairs(Players:GetChildren()) do
+            if v:IsInGroup(groupID) then
+                local Success, Result = pcall(function()
+                    return v:GetRankInGroup(groupID)
+                end)
+                if Success then
+                    if Result > 99 then
+                        SendWebhook(v.Name .. " " .. v.PlayerId .. " has Joined you at " .. os.date())
+                        PlaySound()
+                    end
+                end
+                task.wait(0.1)
+            end
+        end
+    end
+end)
