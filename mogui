@@ -16,6 +16,7 @@ local TargetBodyHeat = 30
 local MinStam = 5
 local MaxStam = 65
 local UseM2 = false
+local MaxFoodNumber = _G.MaxFood or 8
 
 local AutoMachines = false
 local MachineType = nil
@@ -236,7 +237,7 @@ end
 local function CheckMax(FoodName)
     local Food = Player.Backpack:FindFirstChild(FoodName) or Player.Character:FindFirstChild(FoodName)
     if Food then
-        if Food.Quantity.Value < 8 then
+        if Food.Quantity.Value < MaxFoodNumber then
             return true
         else
             return false
