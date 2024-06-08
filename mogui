@@ -428,7 +428,7 @@ end
 
 
 local Library = Material.Load({
-    Title = "Mighty Omega | v1.0.1",
+    Title = "Mighty Omega | v1.0.0",
     Style = 3,
     SizeX = 250,
     SizeY = 270,
@@ -1371,8 +1371,8 @@ local Dataloss = Misc.Button({
             return key;
         end
         
-        local AnimationGUI = Player.PlayerGui:WaitForChild("AnimationsGUI")
-        local AnimRemote = AnimationGUI:WaitForChild("RemoteF")
+        local AnimationGUI = Player.PlayerGui:FindFirstChild("AnimationsGUI")
+        local AnimRemote = AnimationGUI:FindFirstChild("RemoteF")
         
         if AnimationGUI then
             local Key = getKey(AnimationGUI.LocalScript)
