@@ -1,4 +1,4 @@
--- Mobile Version | Made by vib_y uwu
+-- Mobile Version | Made by vib_y uwu | 1.0.1
 
 local Material = loadstring(game:HttpGet("https://raw.githubusercontent.com/Floofyu/squeekybowl/main/guithing"))()
 
@@ -428,7 +428,7 @@ end
 
 
 local Library = Material.Load({
-    Title = "Mighty Omega | v1.0.0",
+    Title = "Mighty Omega | v1.0.1",
     Style = 3,
     SizeX = 250,
     SizeY = 270,
@@ -703,7 +703,7 @@ local AutoMachinesToggle = Machines.Toggle({
                             end
     
                             if Stamina <= MinStam then
-                                repeat wait() until Stamina >= MachineMaxStam or not AutoMachines or not Player.PlayerGui:FindFirstChild("TreadmillMachineGUI")
+                                repeat wait() Stamina = (Player.Character.CurrentStamina.Value/Player.Character.MaxStamina.Value) * 100 until Stamina >= MachineMaxStam or not AutoMachines or not Player.PlayerGui:FindFirstChild("TreadmillMachineGUI")
                             end
                         end
                     else
@@ -750,7 +750,7 @@ local AutoMachinesToggle = Machines.Toggle({
                             end
     
                             if Stamina <= MinStam then
-                                repeat wait() until Stamina >= MachineMaxStam or not AutoMachines or not MachineGui
+                                repeat wait() Stamina = (Player.Character.CurrentStamina.Value/Player.Character.MaxStamina.Value) * 100 until Stamina >= MachineMaxStam or not AutoMachines or not MachineGui
                             end
                         end
                     else
