@@ -1,10 +1,11 @@
--- Mobile Version | Made by vib_y uwu | 1.0.1
+-- Mobile Version | Made by vib_y uwu | 1.0.2
 
 local Material = loadstring(game:HttpGet("https://raw.githubusercontent.com/Floofyu/squeekybowl/main/guithing"))()
 
 local Players = game:GetService("Players")
 local VirtualInputManager = game:GetService('VirtualInputManager')
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
 local Player = Players.LocalPlayer
 local Mouse = Player:GetMouse()
 
@@ -428,10 +429,10 @@ end
 
 
 local Library = Material.Load({
-    Title = "Mighty Omega | v1.0.1",
+    Title = "Mighty Omega | v1.0.2",
     Style = 3,
     SizeX = 250,
-    SizeY = 270,
+    SizeY = 300,
     Theme = "Dark",
     ColorOverrides = {
         MainFrame = Color3.fromRGB(0,0,0)
@@ -1404,6 +1405,20 @@ local Dataloss = Misc.Button({
 		Information = function(self)
 			Library.Banner({
 				Text = "Reset your first emote to undataloss"
+			})
+		end
+	}
+})
+
+local RejoinButton = Misc.Button({
+	Text = "Rejoin",
+	Callback = function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
+	end,
+	Menu = {
+		Information = function(self)
+			Library.Banner({
+				Text = "Rejoins the server.."
 			})
 		end
 	}
