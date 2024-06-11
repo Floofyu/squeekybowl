@@ -58,7 +58,7 @@ end
 
 local Library = Material.Load({
     Title = "Mighty Dataloss | v1.0",
-    Style = 3,
+    Style = 1,
     SizeX = 200,
     SizeY = 175,
     Theme = "Dark",
