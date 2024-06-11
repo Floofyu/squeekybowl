@@ -197,3 +197,78 @@ local RejoinButton = Home.Button({
 		end
 	}
 })
+
+local ViewList = {}
+
+local CurrentlyViewing = nil
+local CurrentViewer = nil
+local PreviousViewer = nil
+
+local function GetButton(Name)
+    for i,v in pairs(Player.PlayerGui.PlayerList.Frame.ScrollF:GetDescendants()) do
+        if v.Parent.Name == Name then
+            return v.Parent
+        end
+    end
+end
+
+local function AttachButton(Button)
+    local Victim = Button.Parent.Name
+    ViewList[Button.Parent] = Button.MouseButton1Down:Connect(function()
+        if CurrentlyViewing and CurrentViewer and PreviousViewer then
+            local OtherButton = GetButton(CurrentViewer)
+            if OtherButton then
+                OtherButton.User.Txt.TextColor3 = Color3.new(255,255,255)
+            end
+
+            CurrentViewer = Victim
+
+            if CurrentViewer ~= PreviousViewer then
+                Button.Txt.TextColor3 = Color3.new(255,0,0)
+                pcall(function()
+                    workspace.CurrentCamera.CameraSubject = Players:FindFirstChild(Victim).Character
+                end)
+                PreviousViewer = Victim
+                CurrentlyViewing = true
+            else
+                CurrentlyViewing = false
+                CurrentViewer = Player.Name
+                PreviousViewer = Player.Name
+                workspace.CurrentCamera.CameraSubject = Player.Character
+            end
+        elseif not CurrentlyViewing then
+            Button.Txt.TextColor3 = Color3.new(255,0,0)
+            pcall(function()
+                workspace.CurrentCamera.CameraSubject = Players:FindFirstChild(Victim).Character
+            end)
+            CurrentlyViewing = true
+            CurrentViewer = Victim
+            PreviousViewer = Victim
+        end
+    end)
+end
+
+for i,v in pairs(Player.PlayerGui.PlayerList.Frame.ScrollF:GetDescendants()) do
+    if v:IsA('TextButton') and v.Name ~= "Icon" then
+        AttachButton(v)
+    end
+end
+
+local PlayerListAdded = Player.PlayerGui.PlayerList.Frame.ScrollF.ChildAdded:Connect(function(v)
+    AttachButton(v.User)
+end)
+
+local PlayerListRemoved = Player.PlayerGui.PlayerList.Frame.ScrollF.ChildRemoved:Connect(function(v)
+    if CurrentlyViewing and CurrentViewer then
+        if CurrentViewer == v.Name then
+            workspace.CurrentCamera.CameraSubject = Player.Character
+            CurrentViewer = Player.Name
+            PreviousViewer = Player.Name
+            CurrentlyViewing = false
+        end
+    end
+    if ViewList[v] then
+        ViewList[v]:Disconnect()
+        ViewList[v] = nil
+    end
+end)
