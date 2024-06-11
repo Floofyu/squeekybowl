@@ -248,6 +248,8 @@ local function AttachButton(Button)
     end)
 end
 
+local PlayerList = Player.PlayerGui:WaitForChild("PlayerList")
+
 for i,v in pairs(Player.PlayerGui.PlayerList.Frame.ScrollF:GetDescendants()) do
     if v:IsA('TextButton') and v.Name ~= "Icon" then
         AttachButton(v)
