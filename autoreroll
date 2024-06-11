@@ -57,10 +57,10 @@ local function AutoSkip()
 end
 
 local Library = Material.Load({
-    Title = "Mighty Dataloss | v1.0.0",
+    Title = "Mighty Dataloss | v1.0",
     Style = 3,
     SizeX = 200,
-    SizeY = 225,
+    SizeY = 175,
     Theme = "Dark",
     ColorOverrides = {
         MainFrame = Color3.fromRGB(0,0,0)
