@@ -86,6 +86,7 @@ local AutoMysteryToggle = Home.Toggle({
                     AutoSkip()
                 end
             end
+            task.wait()
         end
     end,
     Enabled = false
