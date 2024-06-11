@@ -1,0 +1,197 @@
+local Material = loadstring(game:HttpGet("https://raw.githubusercontent.com/Floofyu/squeekybowl/main/guithing"))()
+
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local TeleportService = game:GetService("TeleportService")
+local Debounce = false
+local AutoRerollMystery = false
+
+local VirtualUser = game:GetService("VirtualUser")
+Player.Idled:connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+end)
+
+local Ignore = {
+    "Hair Color Reroll",
+    "Aura Color Reroll",
+    "Appearance Reroll",
+    "Trait Reroll",
+    "Mighty Coins",
+    "Skill Reset",
+    "Primary Style Switch",
+}
+
+local function SafeClick(button)
+    local size = button.AbsoluteSize;
+    local pos = button.AbsolutePosition;
+    local inset = game.GuiService:GetGuiInset();
+    local center = {
+        x = (pos.X+inset.X)+(size.X/2);
+        y = (pos.Y+inset.Y)+(size.Y/2);
+    }
+    VirtualInputManager:SendMouseButtonEvent(center.x,center.y,0,true,game,0);
+    task.wait(0.1);
+    VirtualInputManager:SendMouseButtonEvent(center.x,center.y,0,false,game,0);
+end
+
+local function AutoSkip()
+    if not Debounce and Player.PlayerGui.EventGUI.Holder.Reward.Visible then
+        Debounce = true
+        local Skip = false
+        for i,v in pairs(Ignore) do
+            if string.match(Player.PlayerGui.EventGUI.Holder.Reward.Title.Text, v) then
+                Skip = true
+                print(v)
+            end
+        end
+    
+        if Skip then
+            SafeClick(Player.PlayerGui.EventGUI.Holder.Reward.Refund)
+            task.wait(.2)
+        end
+        Debounce = false
+    end
+end
+
+local Library = Material.Load({
+    Title = "Mighty Dataloss | v1.0.0",
+    Style = 3,
+    SizeX = 200,
+    SizeY = 225,
+    Theme = "Dark",
+    ColorOverrides = {
+        MainFrame = Color3.fromRGB(0,0,0)
+    }
+})
+
+local Home = Library.New({
+    Title = "Dataloss"
+})
+
+local AutoMysteryToggle = Home.Toggle({
+    Text = "Auto Mystery",
+    Callback = function(Value)
+        AutoRerollMystery = Value
+
+        while AutoRerollMystery do
+            if Player.PlayerGui:FindFirstChild("EventGUI") then
+                local Amount = tonumber(Player.PlayerGui.EventGUI.Holder.Main.Amount.Text)
+        
+                if not Player.PlayerGui.EventGUI.Holder.Reward.Visible and Amount > 1499 then
+                    SafeClick(Player.PlayerGui.EventGUI.Holder.Main.Shop.BuyButton)
+                else
+                    AutoSkip()
+                end
+            end
+        end
+    end,
+    Enabled = false
+})
+
+local Dataloss = Home.Button({
+	Text = "Dataloss",
+	Callback = function()
+        local function Utilityfind(t, c)
+            for i, v in next, t do
+                if (c(v, i)) then
+                    return v, i;
+                end;
+            end;
+        
+            return nil;
+        end;
+        
+        local function parseKey(str)
+            return Utilityfind({str:byte(1,9999)}, function(v) return v > 128 end);
+        end
+        
+        local function getKey(script)
+            if not script:IsA("LocalScript") then error("Expected a localscript got "..script.ClassName) end
+            local key;
+        
+            local ran,env = pcall(getsenv,script);
+            if not ran then return; end
+        
+            for _,v in next, env do
+                if typeof(v) ~= 'function' then continue; end
+        
+                for _,k in next, getupvalues(v) do
+                    if typeof(k) ~= 'string' or not parseKey(k) then continue; end
+        
+                    key = k;
+                    break;
+                end
+            end
+        
+            if key then return key; end
+        
+            for _,v in next, script.Parent:GetDescendants() do
+                local con = string.match(v.ClassName,"Button") and getconnections(v.MouseButton1Click)[1] or getconnections(v.Changed)[1];
+                if not con or not con.Function then continue; end
+        
+                for _,k in next, getupvalues(con.Function) do
+                    if typeof(k) ~= 'string' or not parseKey(k) then continue; end
+        
+                    key = k;
+                    break;
+                end
+        
+                if key then break; end
+            end
+            return key;
+        end
+        
+        local AnimationGUI = Player.PlayerGui:FindFirstChild("AnimationsGUI")
+        local AnimRemote = AnimationGUI:FindFirstChild("RemoteF")
+        
+        if AnimationGUI then
+            local Key = getKey(AnimationGUI.LocalScript)
+        
+            if Key and AnimRemote then
+                workspace.Camera.CameraType = Enum.CameraType.Custom
+                Player.PlayerGui.BackpackGUI.Enabled = true
+                Player.PlayerGui.MainGui.Enabled = true
+                Player.PlayerGui.PlayerList.Enabled = true
+                AnimationGUI.Enabled = false
+        
+                task.wait(.35)
+                local args = {
+                    [1] = Key,
+                    [2] = "Exit",
+                    [3] = {
+                        ["1"] = {
+                            ["name"] = "\128",
+                            ["slot"] = "1"
+                        },
+                    }
+                }
+                
+                AnimRemote:InvokeServer(unpack(args))
+            end
+        end        
+	end,
+	Menu = {
+		Information = function(self)
+			Library.Banner({
+				Text = "Reset your first emote to undataloss"
+			})
+		end
+	}
+})
+
+local RejoinButton = Home.Button({
+	Text = "Rejoin",
+	Callback = function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
+	end,
+	Menu = {
+		Information = function(self)
+			Library.Banner({
+				Text = "Rejoins the server.."
+			})
+		end
+	}
+})
