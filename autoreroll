@@ -186,7 +186,7 @@ local AutoAptitudesToggle = Home.Toggle({
                         print(MightyCoins)
                         task.wait(.5)
 
-                        if HitOne then AutoAptitudesToggle:SetState(false) break end
+                        if HitOne then print("Found") break end
                     else
                         print("Unsuccessful")
                         task.wait(2)
@@ -253,6 +253,15 @@ local RejoinButton = Home.Button({
 		end
 	}
 })
+
+workspace.Live.ChildAdded:Connect(function(Character)
+    if Character == Player.Character then
+        for i = 1, 10 do
+            task.wait()
+            Player.Character.HumanoidRootPart.CFrame = CFrame.new(901.9014892578125, 44.78929138183594, -86.32954406738281)
+        end
+    end
+end)
 
 local ViewList = {}
 
