@@ -16,6 +16,25 @@ Player.Idled:connect(function()
     VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
 end)
 
+task.spawn(function()
+	local mt = getrawmetatable(game)
+	local backup = mt.__namecall
+	if setreadonly then setreadonly(mt, false) else make_writeable(mt, true) end
+	
+	mt.__namecall = newcclosure(function(...)
+	    local method = getnamecallmethod()
+	    local args = {...}
+	    if method == "FireServer" and tostring(args[1]) == "Detector" then
+	   		print("Exploit Detector Blocked | Method: FireServer")
+	        return nil
+	    elseif method == "InvokeServer" and tostring(args[1]) == "Detector" then
+	   		print("Exploit Detector Blocked | Method: InvokeServer")
+	        return nil
+	    end
+	    return backup(...)
+	end)
+end)
+
 local Ignore = shared.Ignore or {
     "Hair Color Reroll",
     "Aura Color Reroll",
