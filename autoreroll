@@ -131,6 +131,11 @@ local Home = Library.New({
     Title = "Dataloss"
 })
 
+local AptitudesPage = Library.New({
+    Title = "Aptitudes"
+})
+
+
 local AutoMysteryToggle = Home.Toggle({
     Text = "Auto Mystery",
     Callback = function(Value)
@@ -152,7 +157,7 @@ local AutoMysteryToggle = Home.Toggle({
     Enabled = false
 })
 
-local AutoAptitudesToggle = Home.Toggle({
+local AutoAptitudesToggle = AptitudesPage.Toggle({
     Text = "Auto Aptitudes",
     Callback = function(Value)
         AutoRerollAptitudes = Value
