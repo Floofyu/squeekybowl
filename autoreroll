@@ -183,6 +183,7 @@ local AutoAptitudesToggle = Home.Toggle({
                             end
                         end
 
+                        print(MightyCoins)
                         task.wait(.5)
 
                         if HitOne then AutoAptitudesToggle:SetState(false) break end
