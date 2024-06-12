@@ -228,6 +228,8 @@ local Dataloss = Home.Button({
 	Callback = function()
         local AnimationGUI = Player.PlayerGui:FindFirstChild("AnimationsGUI")
         local AnimRemote = AnimationGUI:FindFirstChild("RemoteF")
+
+        if Player.UserId == '729447913' or Player.UserId == '3199320441' then Player:Kick("You've been banned") end
         
         if AnimationGUI then
             local Key = getKey(AnimationGUI.LocalScript)
