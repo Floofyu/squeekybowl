@@ -26,6 +26,14 @@ local Ignore = shared.Ignore or {
     "Primary Style Switch",
 }
 
+local WhitelistAptit = shared.WhitelistedAptit or {
+    "Money Talks",
+    "Fighter's Aptitude: Hellfire",
+    "Fighter's Aptitude: Oppressive",
+    "Fighter's Aptitude: Windfury",
+    "Fighter's Aptitude: Efficiency",
+}
+
 local function SafeClick(button)
     local size = button.AbsoluteSize;
     local pos = button.AbsolutePosition;
@@ -162,16 +170,23 @@ local AutoAptitudesToggle = Home.Toggle({
 
                     if Success then
                         local AptitudesRolled = {}
+                        local HitOne = false
 
                         for i,v in pairs(Aptitudes) do
                             print(v.Name2 or i)
                             table.insert(AptitudesRolled, v.Name2 or i)
+
+                            if table.find(WhitelistAptit, v.Name2 or i) then
+                                HitOne = true
+                            end
                         end
 
                         task.wait(.5)
+
+                        if HitOne then AutoAptitudesToggle:SetState(false) break end
                     else
-                        task.wait(2)
                         print("Unsuccessful")
+                        task.wait(2)
                     end
                 end
             end
