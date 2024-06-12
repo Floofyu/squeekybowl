@@ -7,6 +7,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local TeleportService = game:GetService("TeleportService")
 local Debounce = false
 local AutoRerollMystery = false
+local AutoRerollAptitudes = false
 
 local VirtualUser = game:GetService("VirtualUser")
 Player.Idled:connect(function()
@@ -57,6 +58,56 @@ local function AutoSkip()
     end
 end
 
+local function Utilityfind(t, c)
+    for i, v in next, t do
+        if (c(v, i)) then
+            return v, i;
+        end;
+    end;
+
+    return nil;
+end;
+
+local function parseKey(str)
+    return Utilityfind({str:byte(1,9999)}, function(v) return v > 128 end);
+end
+
+local function getKey(script)
+    if not script:IsA("LocalScript") then error("Expected a localscript got "..script.ClassName) end
+    local key;
+
+    local ran,env = pcall(getsenv,script);
+    if not ran then return; end
+
+    for _,v in next, env do
+        if typeof(v) ~= 'function' then continue; end
+
+        for _,k in next, getupvalues(v) do
+            if typeof(k) ~= 'string' or not parseKey(k) then continue; end
+
+            key = k;
+            break;
+        end
+    end
+
+    if key then return key; end
+
+    for _,v in next, script.Parent:GetDescendants() do
+        local con = string.match(v.ClassName,"Button") and getconnections(v.MouseButton1Click)[1] or getconnections(v.Changed)[1];
+        if not con or not con.Function then continue; end
+
+        for _,k in next, getupvalues(con.Function) do
+            if typeof(k) ~= 'string' or not parseKey(k) then continue; end
+
+            key = k;
+            break;
+        end
+
+        if key then break; end
+    end
+    return key;
+end
+
 local Library = Material.Load({
     Title = "Mighty Dataloss | v1.0",
     Style = 3,
@@ -93,59 +144,46 @@ local AutoMysteryToggle = Home.Toggle({
     Enabled = false
 })
 
+local AutoAptitudesToggle = Home.Toggle({
+    Text = "Auto Aptitudes",
+    Callback = function(Value)
+        AutoRerollAptitudes = Value
+
+        while AutoRerollAptitudes do task.wait()
+            local MainGui = Player.PlayerGui:FindFirstChild("MainGui")
+
+            if MainGui then
+                local MainLocalScript = MainGui:FindFirstChild("LocalScript")
+                local RemoteFunction = MainLocalScript:FindFirstChild("RemoteF")
+                local Key = getKey(MainLocalScript)
+
+                if MainLocalScript and RemoteFunction and Key then
+                    local Success, Aptitudes, MightyCoins = RemoteFunction:InvokeServer(Key, "RerollApt")
+
+                    if Success then
+                        local AptitudesRolled = {}
+
+                        for i,v in pairs(Aptitudes) do
+                            print(v.Name2 or i)
+                            table.insert(AptitudesRolled, v.Name2 or i)
+                        end
+
+                        task.wait(.5)
+                    else
+                        task.wait(2)
+                        print("Unsuccessful")
+                    end
+                end
+            end
+        end
+    end,
+    Enabled = false
+})
+
+
 local Dataloss = Home.Button({
 	Text = "Dataloss",
 	Callback = function()
-        local function Utilityfind(t, c)
-            for i, v in next, t do
-                if (c(v, i)) then
-                    return v, i;
-                end;
-            end;
-        
-            return nil;
-        end;
-        
-        local function parseKey(str)
-            return Utilityfind({str:byte(1,9999)}, function(v) return v > 128 end);
-        end
-        
-        local function getKey(script)
-            if not script:IsA("LocalScript") then error("Expected a localscript got "..script.ClassName) end
-            local key;
-        
-            local ran,env = pcall(getsenv,script);
-            if not ran then return; end
-        
-            for _,v in next, env do
-                if typeof(v) ~= 'function' then continue; end
-        
-                for _,k in next, getupvalues(v) do
-                    if typeof(k) ~= 'string' or not parseKey(k) then continue; end
-        
-                    key = k;
-                    break;
-                end
-            end
-        
-            if key then return key; end
-        
-            for _,v in next, script.Parent:GetDescendants() do
-                local con = string.match(v.ClassName,"Button") and getconnections(v.MouseButton1Click)[1] or getconnections(v.Changed)[1];
-                if not con or not con.Function then continue; end
-        
-                for _,k in next, getupvalues(con.Function) do
-                    if typeof(k) ~= 'string' or not parseKey(k) then continue; end
-        
-                    key = k;
-                    break;
-                end
-        
-                if key then break; end
-            end
-            return key;
-        end
-        
         local AnimationGUI = Player.PlayerGui:FindFirstChild("AnimationsGUI")
         local AnimRemote = AnimationGUI:FindFirstChild("RemoteF")
         
