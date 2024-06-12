@@ -172,6 +172,8 @@ local AutoAptitudesToggle = Home.Toggle({
                         local AptitudesRolled = {}
                         local HitOne = false
 
+                        print("-----------")
+
                         for i,v in pairs(Aptitudes) do
                             print(v.Name2 or i)
                             table.insert(AptitudesRolled, v.Name2 or i)
